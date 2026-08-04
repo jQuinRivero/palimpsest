@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useMemo, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { ComparisonResult, ViewMode } from "@/lib/types";
+import { BlockConnector } from "./BlockConnector";
 import { DiffBlockRow } from "./DiffBlockRow";
 import { DiffSummaryBar } from "./DiffSummaryBar";
 
@@ -45,6 +47,26 @@ function PaneHeading({ children }: { children: React.ReactNode }) {
   );
 }
 
+function MovesToggle({
+  enabled,
+  onChange,
+}: {
+  enabled: boolean;
+  onChange: (enabled: boolean) => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(!enabled)}
+      aria-pressed={enabled}
+      className="border border-rule px-3 py-1.5 font-ui text-sm text-ink transition-colors hover:text-rubric motion-reduce:transition-none"
+      data-testid="moves-toggle"
+    >
+      Structural markers {enabled ? "on" : "off"}
+    </button>
+  );
+}
+
 /**
  * The reading surface.
  *
@@ -61,18 +83,61 @@ export function DiffViewer({
   comparison: ComparisonResult;
   initialMode?: ViewMode;
 }) {
-  const [mode, setMode] = useState<ViewMode>(initialMode);
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const [mode, setMode] = useState<ViewMode>(
+    searchParams.get("view") === "unified" ? "unified" : initialMode,
+  );
+  const [movesEnabled, setMovesEnabled] = useState(searchParams.get("moves") !== "off");
   const blocks = comparison.blocks;
 
+  const replaceUrlState = useMemo(
+    () => (updates: Record<string, string | null>) => {
+      const params = new URLSearchParams(searchParams.toString());
+      for (const [key, value] of Object.entries(updates)) {
+        if (value === null) {
+          params.delete(key);
+        } else {
+          params.set(key, value);
+        }
+      }
+
+      const query = params.toString();
+      const nextUrl = query ? `${pathname}?${query}` : pathname;
+
+      if (typeof window === "undefined") {
+        router.replace(nextUrl, { scroll: false });
+        return;
+      }
+
+      window.history.replaceState(null, "", nextUrl);
+    },
+    [pathname, router, searchParams],
+  );
+
+  const changeMode = (nextMode: ViewMode) => {
+    setMode(nextMode);
+    replaceUrlState({ view: nextMode === "synoptic" ? null : nextMode });
+  };
+
+  const changeMovesEnabled = (enabled: boolean) => {
+    setMovesEnabled(enabled);
+    replaceUrlState({ moves: enabled ? null : "off" });
+  };
+
   return (
-    <div data-testid="diff-viewer" data-view={mode}>
+    <div data-testid="diff-viewer" data-view={mode} data-moves={movesEnabled ? "on" : "off"}>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
         <div className="font-ui text-sm text-ink-muted">
           <span className="text-ink">{comparison.a.title}</span>
           <span className="mx-2 text-ink-muted">against</span>
           <span className="text-ink">{comparison.b.title}</span>
         </div>
-        <ViewModeToggle mode={mode} onChange={setMode} />
+        <div className="flex flex-wrap items-center gap-2">
+          <MovesToggle enabled={movesEnabled} onChange={changeMovesEnabled} />
+          <ViewModeToggle mode={mode} onChange={changeMode} />
+        </div>
       </div>
 
       <DiffSummaryBar metrics={comparison.metrics} />
@@ -82,24 +147,39 @@ export function DiffViewer({
           This comparison has no blocks to display.
         </p>
       ) : mode === "synoptic" ? (
-        <div className="mt-6 grid grid-cols-1 gap-x-10 md:grid-cols-2">
-          <section aria-label="Manuscript A">
+        <div className="mt-6 grid grid-cols-1 gap-y-3 md:grid-cols-[minmax(0,1fr)_2rem_minmax(0,1fr)] md:gap-x-4">
+          <section aria-label="Manuscript A" className="md:col-start-1">
             <PaneHeading>Manuscript A</PaneHeading>
-            {blocks.map((block) => (
-              <DiffBlockRow key={`a-${block.id}`} block={block} side="a" />
-            ))}
           </section>
-          <section aria-label="Manuscript B">
+          <div aria-hidden="true" className="hidden md:block" />
+          <section aria-label="Manuscript B" className="md:col-start-3">
             <PaneHeading>Manuscript B</PaneHeading>
-            {blocks.map((block) => (
-              <DiffBlockRow key={`b-${block.id}`} block={block} side="b" />
-            ))}
           </section>
+          {blocks.map((block) => (
+            <Fragment key={`synoptic-${block.id}`}>
+              <DiffBlockRow
+                block={block}
+                side="a"
+                showStructuralMarkers={movesEnabled}
+              />
+              <BlockConnector block={block} showMoves={movesEnabled} />
+              <DiffBlockRow
+                block={block}
+                side="b"
+                showStructuralMarkers={movesEnabled}
+              />
+            </Fragment>
+          ))}
         </div>
       ) : (
         <section className="mt-6 max-w-prose" aria-label="Unified reading">
           {blocks.map((block) => (
-            <DiffBlockRow key={`u-${block.id}`} block={block} side="unified" />
+            <DiffBlockRow
+              key={`u-${block.id}`}
+              block={block}
+              side="unified"
+              showStructuralMarkers={movesEnabled}
+            />
           ))}
         </section>
       )}

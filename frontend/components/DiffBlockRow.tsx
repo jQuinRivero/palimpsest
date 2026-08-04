@@ -20,6 +20,43 @@ function proseClass(kind: DiffBlock["kind"]): string {
   }
 }
 
+function structuralClass(block: DiffBlock): string {
+  switch (block.status) {
+    case "MOVED":
+    case "SPLIT":
+    case "MERGED":
+      return "border-l-2 border-moved bg-moved-underlay pl-2";
+    default:
+      return "";
+  }
+}
+
+function movementPhrase(moveDistance: number | null | undefined): string {
+  if (moveDistance === null || moveDistance === undefined || moveDistance === 0) {
+    return "moved to a different position";
+  }
+
+  const magnitude = Math.abs(moveDistance);
+  const plural = magnitude === 1 ? "block" : "blocks";
+  return `moved ${magnitude} ${plural} ${moveDistance < 0 ? "earlier" : "later"}`;
+}
+
+function relationshipLabel(block: DiffBlock, side: "a" | "b" | "unified"): string | null {
+  const pane =
+    side === "a" ? "Manuscript A" : side === "b" ? "Manuscript B" : "unified reading";
+
+  switch (block.status) {
+    case "MOVED":
+      return `${pane} block ${movementPhrase(block.move_distance)}.`;
+    case "SPLIT":
+      return `${pane} block is part of split group ${block.group_id ?? "without an id"}.`;
+    case "MERGED":
+      return `${pane} block is part of merged group ${block.group_id ?? "without an id"}.`;
+    default:
+      return null;
+  }
+}
+
 /**
  * One block in one pane.
  *
@@ -30,9 +67,11 @@ function proseClass(kind: DiffBlock["kind"]): string {
 export function DiffBlockRow({
   block,
   side,
+  showStructuralMarkers = true,
 }: {
   block: DiffBlock;
   side: "a" | "b" | "unified";
+  showStructuralMarkers?: boolean;
 }) {
   const tokens =
     side === "a" ? block.a_tokens : side === "b" ? block.b_tokens : block.tokens;
@@ -41,16 +80,25 @@ export function DiffBlockRow({
 
   return (
     <div
-      className="flex scroll-mt-24 py-2"
+      className={`flex scroll-mt-24 py-2 ${structuralClass(block)}`}
       data-testid={`diff-block-row-${block.id}`}
       data-status={block.status}
-      id={side !== "a" ? `block-${block.b_index ?? block.a_index}` : undefined}
+      data-group-id={block.group_id ?? undefined}
+      id={side !== "a" ? `block-${side}-${block.id}` : undefined}
     >
-      <ChangeGutter index={index} status={block.status} />
+      <ChangeGutter
+        index={index}
+        status={block.status}
+        moveDistance={block.move_distance}
+        showStructuralMarker={showStructuralMarkers}
+      />
       <div
         className={`min-w-0 flex-1 leading-manuscript ${proseClass(block.kind)}`}
         lang={undefined}
       >
+        {relationshipLabel(block, side) ? (
+          <span className="sr-only">{relationshipLabel(block, side)} </span>
+        ) : null}
         {empty ? (
           <span
             className="block select-none"

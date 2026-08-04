@@ -13,6 +13,8 @@ from contextlib import asynccontextmanager
 from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Query, Request, Response, status
+from fastapi.encoders import jsonable_encoder
+from fastapi.responses import JSONResponse
 
 from app.api.deps import get_store
 from app.api.errors import ApiError
@@ -27,6 +29,7 @@ from app.models.diff import BlockPage, ComparisonResult
 from app.models.identifiers import new_comparison_id
 from app.services.diffing.engine import DiffBudgetExceeded
 from app.services.formatting.payload import build_comparison
+from app.services.formatting.tei import build_tei
 from app.storage.sqlite_store import SqliteSessionStore
 from app.storage.store import (
     ComparisonExpired,
@@ -386,6 +389,73 @@ def get_comparison_blocks(
             ErrorCode.COMPARISON_NOT_FOUND,
             f"No comparison with id {comparison_id}.",
         ) from exc
+
+
+@router.get(
+    "/{comparison_id}/export/tei",
+    response_class=Response,
+    responses={
+        200: {
+            "content": {"application/tei+xml": {}},
+            "description": "TEI P5 collation using the parallel segmentation method.",
+        },
+        202: {
+            "model": ComparisonAccepted,
+            "description": "Still being collated; poll and retry.",
+        },
+    },
+    dependencies=[Depends(_enforce_rate_limit)],
+)
+def export_comparison_tei(
+    comparison_id: str,
+    store: SessionStore = Depends(get_store),
+) -> Response:
+    """Export the collation as a TEI P5 document.
+
+    See ``docs/adr/0006-tei-parallel-segmentation-export.md``. The stored
+    comparison is read whole rather than windowed: a partial collation
+    serialised as a complete one would be a quietly wrong scholarly artifact,
+    and unlike a truncated screen it carries no sign that anything is missing.
+    """
+    try:
+        record = store.get_comparison_record(comparison_id)
+    except ComparisonExpired as exc:
+        raise ApiError(
+            ErrorCode.COMPARISON_EXPIRED,
+            f"Comparison {comparison_id} has expired.",
+        ) from exc
+    except ComparisonNotFound as exc:
+        raise ApiError(
+            ErrorCode.COMPARISON_NOT_FOUND,
+            f"No comparison with id {comparison_id}.",
+        ) from exc
+
+    if record.status == ComparisonStatus.PENDING.value:
+        # Exporting now would serialise a comparison with no blocks in it.
+        accepted = JSONResponse(
+            content=jsonable_encoder(_accepted(record.comparison)),
+            status_code=status.HTTP_202_ACCEPTED,
+            headers={"Retry-After": "2"},
+        )
+        _no_store(accepted)
+        return accepted
+    if record.status == ComparisonStatus.FAILED.value:
+        raise ApiError(
+            ErrorCode.INTERNAL_ERROR,
+            record.failure_detail or f"Comparison {comparison_id} failed.",
+        )
+
+    response = Response(
+        content=build_tei(record.comparison),
+        media_type="application/tei+xml",
+        headers={
+            # An attachment rather than inline: browsers render unfamiliar XML
+            # as tag soup, and this is a file to keep, not a page to read.
+            "Content-Disposition": f'attachment; filename="palimpsest-{comparison_id}.xml"',
+        },
+    )
+    _no_store(response)
+    return response
 
 
 @router.delete(

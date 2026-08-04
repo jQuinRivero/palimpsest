@@ -17,6 +17,7 @@ Format adapted from Michael Nygard's original ADR pattern.
 | [0003](./0003-sqlite-session-store.md) | Cache sessions in SQLite with a TTL rather than in process memory | Accepted |
 | [0004](./0004-server-side-diff-computation.md) | Compute diffs on the server and ship a finished payload to the client | Accepted |
 | [0005](./0005-tailwind-v4-css-first-tokens.md) | Adopt Tailwind v4 CSS-first `@theme` tokens; no `tailwind.config.js` | Accepted |
+| [0006](./0006-tei-parallel-segmentation-export.md) | Export TEI P5 using parallel segmentation; encode structural relations as `<linkGrp>` | Accepted |
 
 ## Conventions
 

@@ -10,6 +10,7 @@ from __future__ import annotations
 from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from xml.etree import ElementTree
 
 import pytest
 from fastapi.testclient import TestClient
@@ -23,6 +24,24 @@ from app.storage.sqlite_store import SqliteSessionStore
 
 WITNESS_A = "It was the best of times.\n\nIt was the worst of times.\n"
 WITNESS_B = "It was the brightest of times.\n\nIt was the worst of times.\n"
+
+TEI = "http://www.tei-c.org/ns/1.0"
+TEI_NS = {"t": TEI}
+
+
+def tei_reading(element: ElementTree.Element, witness: str) -> str:
+    """Reconstruct one witness's text from a TEI block element."""
+    if element.tag == f"{{{TEI}}}app":
+        for rdg in element:
+            if rdg.get("wit") == f"#{witness}":
+                return rdg.text or ""
+        return ""
+
+    parts = [element.text or ""]
+    for child in element:
+        parts.append(tei_reading(child, witness))
+        parts.append(child.tail or "")
+    return "".join(parts)
 
 
 @pytest.fixture
@@ -459,3 +478,75 @@ class TestComparisons:
 
         assert client.delete(f"/api/v1/comparisons/{comparison_id}").status_code == 204
         assert client.get(f"/api/v1/comparisons/{comparison_id}").status_code == 404
+
+
+class TestTeiExport:
+    """Export is a read of a live comparison; see ADR-0006."""
+
+    def make(self, client: TestClient) -> str:
+        a_id = upload(client, WITNESS_A, "a.txt")
+        b_id = upload(client, WITNESS_B, "b.txt")
+        created = client.post(
+            "/api/v1/comparisons", json={"a_document_id": a_id, "b_document_id": b_id}
+        )
+        assert created.status_code == 201, created.text
+        return str(created.json()["comparison_id"])
+
+    def test_exports_parseable_tei(self, client: TestClient) -> None:
+        comparison_id = self.make(client)
+        response = client.get(f"/api/v1/comparisons/{comparison_id}/export/tei")
+
+        assert response.status_code == 200, response.text
+        assert response.headers["content-type"].startswith("application/tei+xml")
+
+        root = ElementTree.fromstring(response.text)
+        assert root.tag == "{http://www.tei-c.org/ns/1.0}TEI"
+        assert root.find("t:text/t:body", TEI_NS) is not None
+
+    def test_offered_as_a_named_download(self, client: TestClient) -> None:
+        comparison_id = self.make(client)
+        response = client.get(f"/api/v1/comparisons/{comparison_id}/export/tei")
+
+        disposition = response.headers["content-disposition"]
+        assert disposition.startswith("attachment;")
+        assert comparison_id in disposition
+
+    def test_export_is_never_cached_or_indexed(self, client: TestClient) -> None:
+        """Uploaded manuscripts may be unpublished; the export is the text itself."""
+        comparison_id = self.make(client)
+        response = client.get(f"/api/v1/comparisons/{comparison_id}/export/tei")
+
+        assert response.headers["cache-control"] == "private, no-store"
+        assert response.headers["x-robots-tag"] == "noindex, nofollow"
+
+    def test_both_witnesses_are_recoverable_from_the_file(self, client: TestClient) -> None:
+        comparison_id = self.make(client)
+        comparison = ComparisonResult.model_validate(
+            client.get(f"/api/v1/comparisons/{comparison_id}").json()
+        )
+        root = ElementTree.fromstring(
+            client.get(f"/api/v1/comparisons/{comparison_id}/export/tei").text
+        )
+
+        body = root.find("t:text/t:body", TEI_NS)
+        assert body is not None
+
+        for witness, attribute in (("A", "a_tokens"), ("B", "b_tokens")):
+            recovered = [tei_reading(block, witness) for block in body]
+            expected = [
+                "".join(token.text for token in getattr(block, attribute))
+                for block in comparison.blocks
+            ]
+            assert recovered == expected
+
+    def test_unknown_comparison_is_not_found(self, client: TestClient) -> None:
+        response = client.get("/api/v1/comparisons/cmp_missing/export/tei")
+        assert response.status_code == 404
+        assert response.json()["code"] == "COMPARISON_NOT_FOUND"
+
+    def test_deleted_comparison_cannot_be_exported(self, client: TestClient) -> None:
+        comparison_id = self.make(client)
+        assert client.delete(f"/api/v1/comparisons/{comparison_id}").status_code == 204
+
+        response = client.get(f"/api/v1/comparisons/{comparison_id}/export/tei")
+        assert response.status_code == 404

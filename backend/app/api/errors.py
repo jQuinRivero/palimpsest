@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+
 from fastapi import Request
 from fastapi.responses import JSONResponse
 
@@ -13,9 +15,16 @@ PROBLEM_MEDIA_TYPE = "application/problem+json"
 class ApiError(Exception):
     """An error with a defined code, rendered as ``application/problem+json``."""
 
-    def __init__(self, code: ErrorCode, detail: str) -> None:
+    def __init__(
+        self,
+        code: ErrorCode,
+        detail: str,
+        *,
+        headers: Mapping[str, str] | None = None,
+    ) -> None:
         self.code = code
         self.detail = detail
+        self.headers = dict(headers or {})
         super().__init__(detail)
 
     @property
@@ -36,6 +45,7 @@ class ApiError(Exception):
             status_code=self.status,
             content=self.to_problem().model_dump(mode="json"),
             media_type=PROBLEM_MEDIA_TYPE,
+            headers=self.headers,
         )
 
 

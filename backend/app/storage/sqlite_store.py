@@ -22,11 +22,17 @@ from app.models import (
     DocumentSummary,
     IngestionWarning,
 )
-from app.storage.store import ComparisonExpired, ComparisonNotFound, DocumentNotFound
+from app.storage.store import (
+    ComparisonExpired,
+    ComparisonNotFound,
+    ComparisonRecord,
+    DocumentNotFound,
+)
 
 SCHEMA_VERSION: Final = 1
 DEFAULT_BLOCK_LIMIT: Final = 200
 MAX_BLOCK_LIMIT: Final = 500
+FAILED_PREFIX: Final = "FAILED:"
 
 
 def _utc(value: datetime) -> datetime:
@@ -154,12 +160,73 @@ class SqliteSessionStore:
                 raise DocumentNotFound("comparison source document is missing") from exc
         return stored
 
+    def put_pending_comparison(
+        self,
+        *,
+        comparison_id: str,
+        a: Document,
+        b: Document,
+        options: DiffOptions,
+        created_at: datetime,
+        expires_at: datetime,
+    ) -> ComparisonResult:
+        pending = ComparisonResult(
+            comparison_id=comparison_id,
+            created_at=_utc(created_at),
+            expires_at=_utc(expires_at),
+            a=DocumentSummary.from_document(a),
+            b=DocumentSummary.from_document(b),
+            blocks=[],
+            metrics=DiffMetrics(
+                similarity=0.0,
+                edit_count=0,
+                insertions=0,
+                deletions=0,
+                unchanged_tokens=0,
+                churn=0.0,
+                blocks_moved=0,
+                blocks_split=0,
+                blocks_merged=0,
+                a_word_count=a.metadata.word_count,
+                b_word_count=b.metadata.word_count,
+            ),
+            options=options,
+            truncated=True,
+            total_blocks=0,
+        )
+        return self.put_comparison(pending, status="PENDING", expires_at=expires_at)
+
+    def mark_comparison_failed(self, comparison_id: str, detail: str) -> None:
+        safe_detail = " ".join(detail.split())[:500] or "Comparison computation failed."
+        with self._connection() as conn:
+            cursor = conn.execute(
+                "UPDATE comparisons SET status = ? WHERE id = ?",
+                (f"{FAILED_PREFIX}{safe_detail}", comparison_id),
+            )
+        if cursor.rowcount == 0:
+            raise ComparisonNotFound(comparison_id)
+
     def get_comparison(self, comparison_id: str) -> ComparisonResult:
         row = self._comparison_row(comparison_id)
         return self._comparison_from_row(row)
 
+    def get_comparison_record(self, comparison_id: str) -> ComparisonRecord:
+        row = self._comparison_row(comparison_id)
+        status = str(row["status"])
+        failure_detail: str | None = None
+        if status.startswith(FAILED_PREFIX):
+            failure_detail = status[len(FAILED_PREFIX) :]
+            status = "FAILED"
+        return ComparisonRecord(
+            comparison=self._comparison_from_row(row),
+            status=status,
+            failure_detail=failure_detail,
+        )
+
     def get_comparison_blocks(self, comparison_id: str, offset: int, limit: int) -> BlockPage:
         row = self._comparison_row(comparison_id)
+        if str(row["status"]) != "COMPLETE":
+            raise ComparisonNotFound(comparison_id)
         blocks_payload = json.loads(str(row["blocks_json"]))
         total_blocks = len(blocks_payload)
         safe_offset = max(offset, 0)

@@ -2,9 +2,14 @@
 
 from __future__ import annotations
 
+import asyncio
+import logging
+from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
 
 from app.storage.store import SessionStore
+
+logger = logging.getLogger(__name__)
 
 
 def sweep_expired(store: SessionStore, now: datetime | None = None) -> int:
@@ -16,3 +21,26 @@ def sweep_expired(store: SessionStore, now: datetime | None = None) -> int:
     """
 
     return store.sweep_expired(now or datetime.now(UTC))
+
+
+async def run_periodic_sweeper(
+    store: SessionStore,
+    *,
+    interval_seconds: float,
+    sleep: Callable[[float], Awaitable[object]] = asyncio.sleep,
+) -> None:
+    """Sweep expired cache rows until cancelled.
+
+    The SQLite work runs in a thread so a slow delete or ``PRAGMA optimize``
+    pass never blocks the event loop. One failed pass is logged and the next
+    interval still runs.
+    """
+
+    while True:
+        await sleep(interval_seconds)
+        try:
+            await asyncio.to_thread(sweep_expired, store)
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            logger.exception("session cache sweep failed")

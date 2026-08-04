@@ -30,16 +30,28 @@ class Settings(BaseSettings):
     #: budget; see docs/11-performance-and-scale.md.
     max_upload_bytes: int = 25 * 1024 * 1024
 
+    inline_blocks_per_comparison: int = 4_000
+    inline_tokens_per_comparison: int = 220_000
     max_blocks_per_comparison: int = 12_000
-    max_tokens_per_comparison: int = 750_000
+    max_tokens_per_comparison: int = 700_000
+
+    comparison_window_block_threshold: int = 2_500
+    comparison_window_serialized_bytes: int = 12 * 1024 * 1024
 
     default_block_page_limit: int = 200
     max_block_page_limit: int = 500
+
+    rate_limit_enabled: bool = True
+    rate_limit_requests_per_minute: int = 600
+    rate_limit_burst: int = 200
 
     #: Sessions are a cache with a deadline, not a system of record. The
     #: researcher's own files remain the system of record.
     document_ttl_hours: int = 24 * 7
     comparison_ttl_hours: int = 24 * 7
+
+    sweeper_enabled: bool = True
+    sweeper_interval_seconds: float = 300.0
 
     #: Development runs the frontend on its own port, so CORS is required.
     cors_origins: list[str] = ["http://localhost:3000", "http://127.0.0.1:3000"]

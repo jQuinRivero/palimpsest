@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import asyncio
 import sqlite3
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from typing import cast
 
 import pytest
 
@@ -28,9 +30,11 @@ from app.storage import (
     ComparisonExpired,
     ComparisonNotFound,
     DocumentNotFound,
+    SessionStore,
     SqliteSessionStore,
     sweep_expired,
 )
+from app.storage.sweeper import run_periodic_sweeper
 
 
 def _document(document_id: str, title: str, *, expires_in: timedelta | None = None) -> Document:
@@ -152,6 +156,32 @@ def test_round_trips_document_and_comparison(store: SqliteSessionStore) -> None:
     assert store.get_comparison(comparison.comparison_id) == comparison
 
 
+def test_pending_and_failed_comparison_status_round_trips(store: SqliteSessionStore) -> None:
+    a = _document("doc-a", "Manuscript A")
+    b = _document("doc-b", "Manuscript B")
+    now = datetime.now(UTC)
+    expires_at = now + timedelta(hours=1)
+    _put_document(store, a, expires_at=expires_at)
+    _put_document(store, b, expires_at=expires_at)
+
+    pending = store.put_pending_comparison(
+        comparison_id="cmp-pending",
+        a=a,
+        b=b,
+        options=DiffOptions(),
+        created_at=now,
+        expires_at=expires_at,
+    )
+    record = store.get_comparison_record(pending.comparison_id)
+    assert record.status == "PENDING"
+    assert record.comparison.comparison_id == pending.comparison_id
+
+    store.mark_comparison_failed(pending.comparison_id, "worker blew up")
+    failed = store.get_comparison_record(pending.comparison_id)
+    assert failed.status == "FAILED"
+    assert failed.failure_detail == "worker blew up"
+
+
 def test_expired_unswept_comparison_raises_expired(store: SqliteSessionStore) -> None:
     a = _document("doc-a", "Manuscript A")
     b = _document("doc-b", "Manuscript B")
@@ -183,6 +213,64 @@ def test_sweeper_deletes_expired_rows_and_leaves_live_rows(store: SqliteSessionS
         store.get_document(expired.id)
     assert store.get_document(live.id) == live
     assert store.get_comparison(live_comparison.comparison_id) == live_comparison
+
+
+def test_periodic_sweeper_deletes_expired_rows(store: SqliteSessionStore) -> None:
+    now = datetime.now(UTC)
+    expired = _document("expired-doc", "Expired")
+    _put_document(store, expired, expires_at=now - timedelta(seconds=1))
+    calls = 0
+
+    async def sleep(_: float) -> object:
+        nonlocal calls
+        calls += 1
+        if calls > 1:
+            raise asyncio.CancelledError
+        return None
+
+    async def run() -> None:
+        with pytest.raises(asyncio.CancelledError):
+            await run_periodic_sweeper(store, interval_seconds=0, sleep=sleep)
+
+    asyncio.run(run())
+
+    with pytest.raises(DocumentNotFound):
+        store.get_document(expired.id)
+
+
+def test_periodic_sweeper_survives_one_failed_pass() -> None:
+    class FlakyStore:
+        def __init__(self) -> None:
+            self.calls = 0
+
+        def sweep_expired(self, now: datetime) -> int:
+            del now
+            self.calls += 1
+            if self.calls == 1:
+                raise RuntimeError("transient")
+            return 0
+
+    store = FlakyStore()
+    sleeps = 0
+
+    async def sleep(_: float) -> object:
+        nonlocal sleeps
+        sleeps += 1
+        if sleeps > 2:
+            raise asyncio.CancelledError
+        return None
+
+    async def run() -> None:
+        with pytest.raises(asyncio.CancelledError):
+            await run_periodic_sweeper(
+                cast(SessionStore, store),
+                interval_seconds=0,
+                sleep=sleep,
+            )
+
+    asyncio.run(run())
+
+    assert store.calls == 2
 
 
 def test_get_comparison_blocks_paging_and_limit_clamping(store: SqliteSessionStore) -> None:

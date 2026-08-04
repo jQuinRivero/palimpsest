@@ -8,6 +8,7 @@ schema invariants, so a contract violation fails here rather than in a client.
 from __future__ import annotations
 
 from collections.abc import Iterator
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -16,7 +17,8 @@ from fastapi.testclient import TestClient
 from app.api.deps import get_store
 from app.config import Settings, get_settings
 from app.main import create_app
-from app.models import ComparisonResult, check_comparison
+from app.models import ComparisonAccepted, ComparisonResult, DiffOptions, check_comparison
+from app.models.identifiers import new_comparison_id
 from app.storage.sqlite_store import SqliteSessionStore
 
 WITNESS_A = "It was the best of times.\n\nIt was the worst of times.\n"
@@ -33,6 +35,7 @@ def client(tmp_path: Path) -> Iterator[TestClient]:
     app.dependency_overrides[get_store] = lambda: store
 
     with TestClient(app, raise_server_exceptions=False) as test_client:
+        test_client.app.state.store = store
         yield test_client
 
     store.close()
@@ -174,6 +177,152 @@ class TestDocuments:
 
 
 class TestComparisons:
+    def test_over_inline_budget_returns_202_then_completes(self, client: TestClient) -> None:
+        settings = Settings(
+            database_path="unused.db",
+            inline_blocks_per_comparison=1,
+            max_blocks_per_comparison=10,
+            rate_limit_enabled=False,
+        )
+        client.app.dependency_overrides[get_settings] = lambda: settings  # type: ignore[attr-defined]
+        a_id = upload(client, "Alpha text.", "a.txt")
+        b_id = upload(client, "Alpha revised text.", "b.txt")
+
+        accepted_response = client.post(
+            "/api/v1/comparisons",
+            json={"a_document_id": a_id, "b_document_id": b_id},
+        )
+        assert accepted_response.status_code == 202, accepted_response.text
+        assert accepted_response.headers["retry-after"] == "2"
+        accepted = ComparisonAccepted.model_validate(accepted_response.json())
+
+        fetched: ComparisonResult | None = None
+        for _ in range(10):
+            poll = client.get(f"/api/v1/comparisons/{accepted.comparison_id}")
+            if poll.status_code == 200:
+                fetched = ComparisonResult.model_validate(poll.json())
+                break
+            assert poll.status_code == 202
+        assert fetched is not None
+        assert not check_comparison(fetched)
+        assert fetched.comparison_id == accepted.comparison_id
+
+    def test_pending_comparison_polls_as_202(self, client: TestClient) -> None:
+        a_id = upload(client, "Waiting A.", "a.txt")
+        b_id = upload(client, "Waiting B.", "b.txt")
+        store = client.app.state.store
+        a = store.get_document(a_id)
+        b = store.get_document(b_id)
+        now = datetime.now(UTC)
+        pending = store.put_pending_comparison(
+            comparison_id=new_comparison_id(),
+            a=a,
+            b=b,
+            options=DiffOptions(),
+            created_at=now,
+            expires_at=now + timedelta(hours=1),
+        )
+
+        response = client.get(f"/api/v1/comparisons/{pending.comparison_id}")
+        assert response.status_code == 202
+        assert response.headers["retry-after"] == "2"
+        body = ComparisonAccepted.model_validate(response.json())
+        assert body.retry_after == 2
+        assert body.comparison_id == pending.comparison_id
+
+    def test_failed_background_comparison_surfaces_failure(self, client: TestClient) -> None:
+        a_id = upload(client, "Failure A.", "a.txt")
+        b_id = upload(client, "Failure B.", "b.txt")
+        store = client.app.state.store
+        a = store.get_document(a_id)
+        b = store.get_document(b_id)
+        now = datetime.now(UTC)
+        pending = store.put_pending_comparison(
+            comparison_id=new_comparison_id(),
+            a=a,
+            b=b,
+            options=DiffOptions(),
+            created_at=now,
+            expires_at=now + timedelta(hours=1),
+        )
+        store.mark_comparison_failed(pending.comparison_id, "boom")
+
+        response = client.get(f"/api/v1/comparisons/{pending.comparison_id}")
+        assert response.status_code == 500
+        assert response.json()["code"] == "INTERNAL_ERROR"
+        assert "boom" in response.json()["detail"]
+
+    def test_above_hard_ceiling_returns_budget_error(self, client: TestClient) -> None:
+        settings = Settings(
+            database_path="unused.db",
+            max_blocks_per_comparison=1,
+            rate_limit_enabled=False,
+        )
+        client.app.dependency_overrides[get_settings] = lambda: settings  # type: ignore[attr-defined]
+        a_id = upload(client, "One.", "a.txt")
+        b_id = upload(client, "Two.", "b.txt")
+
+        response = client.post(
+            "/api/v1/comparisons",
+            json={"a_document_id": a_id, "b_document_id": b_id},
+        )
+        assert response.status_code == 413
+        assert response.json()["code"] == "DIFF_BUDGET_EXCEEDED"
+
+    def test_truncated_result_and_window_clamping(self, client: TestClient) -> None:
+        settings = Settings(
+            database_path="unused.db",
+            comparison_window_block_threshold=1,
+            default_block_page_limit=1,
+            max_block_page_limit=2,
+            rate_limit_enabled=False,
+        )
+        client.app.dependency_overrides[get_settings] = lambda: settings  # type: ignore[attr-defined]
+        a_id = upload(client, "First.\n\nSecond.\n\nThird.", "a.txt")
+        b_id = upload(client, "First changed.\n\nSecond.\n\nThird.", "b.txt")
+        created = client.post(
+            "/api/v1/comparisons", json={"a_document_id": a_id, "b_document_id": b_id}
+        ).json()
+
+        fetched_response = client.get(f"/api/v1/comparisons/{created['comparison_id']}")
+        fetched = ComparisonResult.model_validate(fetched_response.json())
+        assert not check_comparison(fetched)
+        assert fetched.truncated is True
+        assert fetched.total_blocks == 3
+        assert len(fetched.blocks) == 1
+
+        first_page = client.get(
+            f"/api/v1/comparisons/{created['comparison_id']}/blocks",
+            params={"offset": 0, "limit": 2},
+        ).json()
+        assert len(first_page["blocks"]) == 2
+        assert first_page["limit"] == 2
+        assert first_page["total_blocks"] == 3
+        clamped = client.get(
+            f"/api/v1/comparisons/{created['comparison_id']}/blocks",
+            params={"offset": 0, "limit": 99},
+        ).json()
+        assert clamped["limit"] == 2
+        past_end = client.get(
+            f"/api/v1/comparisons/{created['comparison_id']}/blocks",
+            params={"offset": 99, "limit": 2},
+        ).json()
+        assert past_end["blocks"] == []
+
+    def test_rate_limiter_returns_retry_after(self, client: TestClient) -> None:
+        settings = Settings(
+            database_path="unused.db",
+            rate_limit_requests_per_minute=0,
+            rate_limit_burst=1,
+        )
+        client.app.dependency_overrides[get_settings] = lambda: settings  # type: ignore[attr-defined]
+
+        assert client.get("/api/v1/comparisons/cmp_missing").status_code == 404
+        limited = client.get("/api/v1/comparisons/cmp_missing")
+        assert limited.status_code == 429
+        assert limited.headers["retry-after"] == "60"
+        assert limited.json()["code"] == "RATE_LIMITED"
+
     def test_full_journey(self, client: TestClient) -> None:
         a_id = upload(client, WITNESS_A, "a.txt")
         b_id = upload(client, WITNESS_B, "b.txt")

@@ -167,7 +167,9 @@ Block similarity is `rapidfuzz.fuzz.ratio` over the normalized block texts, scal
 
 **3 — Prefilter on length.** Within a gap, reject candidate pairs whose token-count ratio falls outside a plausible band before computing any similarity. A 40-token paragraph cannot be a revision of a 900-token one. This is an integer comparison discarding candidates that a string metric would spend real time rejecting.
 
-**4 — Score the survivors.** `rapidfuzz.process.cdist` computes the remaining pairwise scores as a matrix, with `score_cutoff` set to `align_threshold` so sub-threshold pairs are discarded inside the C++ layer and never materialise in Python.
+**4 — Score the survivors.** `rapidfuzz.process.extract` scores each remaining A block against the gap's B candidates, with `score_cutoff` set to `align_threshold` so sub-threshold pairs are discarded inside the C++ layer and never materialise in Python.
+
+`process.cdist` would compute the same scores as a single matrix and is the more obvious choice, but it returns a NumPy array and so requires NumPy — a substantial dependency to add to a text-comparison tool for one call. `extract` performs the same C++ scoring with the same cutoff behaviour, and after anchoring the gaps are small by construction, so querying per block costs nothing measurable.
 
 **5 — Assign.** Greedy best-first: take the highest-scoring available pair, commit it, remove both blocks from consideration, repeat until no pair scores at or above `align_threshold` (default `0.50`). Optimal assignment via the Hungarian algorithm is *not* used. Gap sub-problems are small, greedy and optimal agree on almost all of them, and greedy is stable, explicable, and cheap. When a scholar asks why two paragraphs were matched, "they were each other's best remaining candidate at 0.83" is an answer; a global optimum over a cost matrix is not.
 

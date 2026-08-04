@@ -88,6 +88,7 @@ frontend/
     TokenSpan.tsx
     ChangeGutter.tsx
     ChangeNavigator.tsx
+    LoadingProgress.tsx
     BlockConnector.tsx
     EmptyState.tsx
   lib/
@@ -95,16 +96,18 @@ frontend/
     types.ts
     hooks/
       useBlockNavigation.ts
+      useWindowedBlocks.ts
 ```
 
 | Frontend path | Owns |
 |---|---|
 | `frontend/app/page.tsx` | Upload route `/`, centered on `ManuscriptUploader`. |
 | `frontend/app/c/[comparisonId]/page.tsx` | Viewer route `/c/[comparisonId]`, loading and rendering a `ComparisonResult`. |
-| `frontend/components/` | `ManuscriptUploader`, `DiffViewer`, `VirtualizedSynopticView`, `DiffSummaryBar`, `DiffBlockRow`, `TokenSpan`, `ChangeGutter`, `ChangeNavigator`, `BlockConnector`, and `EmptyState`. `ViewModeToggle` is a private component inside `DiffViewer.tsx`, not a separate module: it is three buttons with no state of its own and no second consumer. |
+| `frontend/components/` | `ManuscriptUploader`, `DiffViewer`, `VirtualizedSynopticView`, `DiffSummaryBar`, `DiffBlockRow`, `TokenSpan`, `ChangeGutter`, `ChangeNavigator`, `LoadingProgress`, `BlockConnector`, and `EmptyState`. `ViewModeToggle` is a private component inside `DiffViewer.tsx`, not a separate module: it is three buttons with no state of its own and no second consumer. |
 | `frontend/lib/api.ts` | Thin API client for `/api/v1` endpoints. |
 | `frontend/lib/types.ts` | TypeScript mirror of the JSON payload contract from [Data schema](./05-data-schema.md). |
 | `frontend/lib/hooks/useBlockNavigation.ts` | Active block, next/previous change traversal, focus, and the `?block=<index>` deep link. |
+| `frontend/lib/hooks/useWindowedBlocks.ts` | Loading the remaining windows of a truncated comparison, and reporting honest progress while it does. |
 
 URL state is read where it is used rather than centralized in a `url-state` module: `?view=` is resolved server-side in the viewer route, `?moves=` in `DiffViewer`, and `?block=` in `useBlockNavigation`. A shared module would have been a single import with three unrelated consumers.
 

@@ -36,6 +36,7 @@ frontend/
     TokenSpan.tsx              # One rendered `Token`.
     ChangeGutter.tsx           # Block ordinals and block-level change markers.
     ChangeNavigator.tsx        # Next/previous change controls and their announcements.
+    LoadingProgress.tsx        # Honest reporting while a windowed comparison loads.
     BlockConnector.tsx         # Visual connector for aligned block pairs and moves.
     EmptyState.tsx             # Helpful state for no upload, no changes, or expired links.
   lib/
@@ -43,6 +44,7 @@ frontend/
     types.ts                   # TypeScript mirror of the Pydantic models; see doc 05.
     hooks/
       useBlockNavigation.ts    # Active block and next/previous change navigation.
+      useWindowedBlocks.ts     # Loads the remaining windows of a truncated comparison.
   styles/
     globals.css                # Tailwind v4 import, `@theme` tokens, base document styles.
 ```
@@ -100,7 +102,11 @@ These components must be `"use client"`:
 | `TokenSpan`, when announcing inline changes | May carry interactive focus and screen-reader-only labels. |
 | `ChangeNavigator` and `useBlockNavigation` | Handle keyboard events, focus management, live announcements, and URL replacement for the active block. |
 
-Very large payloads use the windowed path defined in [Performance and scale](./11-performance-and-scale.md): `GET /api/v1/comparisons/{comparison_id}/blocks?offset=&limit=`. The server route should request `GET /api/v1/comparisons/{comparison_id}?include_blocks=false` when the full `blocks` array would exceed the rendering budget. In that mode, the server sends metadata and initial URL state, and the client fetches `BlockPage` windows as the virtualizer approaches unloaded ranges. The switch is driven by `truncated: true`, `total_blocks`, and response-size limits from doc 11, not by ad hoc browser heuristics.
+Very large payloads use the windowed path defined in [Performance and scale](./11-performance-and-scale.md): `GET /api/v1/comparisons/{comparison_id}/blocks?offset=&limit=`. The switch is driven by `truncated: true` and `total_blocks`, not by ad hoc browser heuristics.
+
+The client loads **every** remaining window, not only the ones it is about to scroll past. Fetching on approach is correct for scrolling and wrong for everything else the viewer must answer: next-and-previous change cannot know where the next change is, the change count would be a count within the loaded window, and a shared `?block=` link into an unloaded window would point at a block that does not exist yet. Those are whole-comparison questions, so the whole comparison has to arrive. Windowing bounds the size of any single response, which is its purpose; it is not a claim that the reader only ever wants the first window.
+
+Loading is sequential, one window per pass, so ordering needs no reasoning about interleaved responses and opening a long manuscript cannot burst requests against its own rate limiter. Until the collation is whole the interface must say so, and any count derived from loaded blocks must be marked provisional — see [Components](./10-components.md).
 
 ### Route-level `loading.tsx` is deliberately absent
 
@@ -164,8 +170,9 @@ The reason is structural: the `ComparisonResult` payload is immutable once fetch
 | Active block | `useBlockNavigation`, backed by `?block=<index>`, seeded from the server for the same reason. |
 | Move connector visibility | `DiffViewer`, backed by `?moves=on\|off`. |
 | Scroll position | `react-virtuoso` inside `VirtualizedSynopticView`; no application-level scroll state exists. |
+| Loaded blocks | `useWindowedBlocks`, which starts from the server's first window and grows to `total_blocks`. |
 
-`useBlockNavigation` owns next/previous change traversal, focus, live announcements, and active block updates, and is the only custom hook in the application. Anything beyond it should be justified by doc 10 rather than added as a hidden architecture choice.
+`useBlockNavigation` owns next/previous change traversal, focus, live announcements, and active block updates. `useWindowedBlocks` owns loading the remaining windows of a truncated comparison. Those are the only two custom hooks in the application; anything beyond them should be justified by doc 10 rather than added as a hidden architecture choice.
 
 ## Scroll alignment
 

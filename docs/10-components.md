@@ -19,6 +19,7 @@ The client does not compute a diff. It uploads two witnesses, asks the backend f
    ├─ DiffSummaryBar
    ├─ ViewModeToggle
    ├─ ChangeNavigator
+   ├─ LoadingProgress                  while a windowed comparison loads
    ├─ VirtualizedSynopticView          when ViewMode is SYNOPTIC
    │  ├─ DiffBlockRow                  Manuscript A pane
    │  │  ├─ ChangeGutter
@@ -38,12 +39,12 @@ The gutter shows block ordinals from `a_index` and `b_index`. These are not rend
 
 | Convention | Requirement |
 |---|---|
-| Client boundary | `ManuscriptUploader`, `DiffViewer`, `VirtualizedSynopticView`, `DiffSummaryBar`, `DiffBlockRow`, `TokenSpan`, `ChangeGutter`, `ChangeNavigator`, `ViewModeToggle`, `BlockConnector`, and `EmptyState` are client components because they read browser input, URL state, focus state, measured layout, or scroll position. |
+| Client boundary | `ManuscriptUploader`, `DiffViewer`, `VirtualizedSynopticView`, `DiffSummaryBar`, `DiffBlockRow`, `TokenSpan`, `ChangeGutter`, `ChangeNavigator`, `LoadingProgress`, `ViewModeToggle`, `BlockConnector`, and `EmptyState` are client components because they read browser input, URL state, focus state, measured layout, or scroll position. |
 | Naming | Public props use `comparisonId`, `comparison`, `blocks`, `metrics`, `options`, `a`, `b`, `a_index`, and `b_index` only where those names mirror the contract. UI text always says Manuscript A and Manuscript B, never positional pane labels. |
 | Memoization | `TokenSpan` is memoized by `text`, `status`, and announcement mode. `DiffBlockRow` is memoized by `DiffBlock.id`, pane, expansion state, and focus state. Handlers passed into virtualized rows are stable callbacks. |
 | DOM discipline | A 100,000-word manuscript can produce about 120,000 word tokens per witness before payload run-coalescing. A payload `Token` is a contiguous run, not necessarily one word. Rows render only the current virtual window and must never compute metrics by counting `Token` array entries. |
 | URL state | `?view=synoptic` maps to `ViewMode.SYNOPTIC`; `?view=unified` maps to `ViewMode.UNIFIED`. `?block=<index>` uses the block ordinal, not a DOM row number. `?moves=on|off` controls whether move connectors are shown; it does not mutate `DiffOptions.detect_moves`, which only records how the backend computed the payload. |
-| Testability hooks | Components expose stable `data-testid` values for the component root and block ids: `manuscript-uploader`, `diff-viewer`, `synoptic-view`, `diff-summary-bar`, `diff-block-row-{id}`, and `token-{status}`. Hooks must not encode visual position. |
+| Testability hooks | Components expose stable `data-testid` values for the component root and block ids: `manuscript-uploader`, `diff-viewer`, `synoptic-view`, `diff-summary-bar`, `block-loading-status`, `diff-block-row-{id}`, and `token-{status}`. Hooks must not encode visual position. |
 
 ## ManuscriptUploader
 
@@ -128,24 +129,24 @@ The swap affordance exchanges the two slots before comparison creation. It must 
 
 ```ts
 export interface DiffViewerProps {
-  comparisonId: string;
   comparison: ComparisonResult;
-  initialBlockPage?: BlockPage;
-  onBlockPageRequested?: (offset: number, limit: number) => Promise<BlockPage>;
-  onProblem?: (problem: ApiProblem) => void;
+  initialMode?: ViewMode;
+  /** Seeded from the server so a shared ?block= link paints correctly and both
+   *  renders agree. Bounded by `total_blocks`, not by the loaded window. */
+  initialBlockIndex?: number | null;
 }
 ```
+
+`DiffViewer` is keyed by `comparison.comparison_id` at the route, so moving between comparisons builds a fresh viewer rather than carrying one comparison's loaded blocks into another.
 
 ### Internal state
 
 | State | Purpose |
 |---|---|
-| `viewMode: ViewMode` | Mirrors `?view=synoptic|unified`, defaulting to `ViewMode.SYNOPTIC`. |
-| `movesEnabled: boolean` | Mirrors `?moves=on|off`, defaulting from `comparison.options.detect_moves`. |
-| `activeBlockIndex: number | null` | Mirrors `?block=<index>` and drives focus and scroll. |
-| `loadedBlocks: DiffBlock[]` | Uses `comparison.blocks` when `comparison.truncated` is `false`; otherwise grows from `GET /api/v1/comparisons/{comparison_id}/blocks?offset=&limit=` pages. |
-| `windowState` | Tracks loaded offsets when the payload is windowed. |
-| `keyboardMode` | Distinguishes pointer scrolling from next/previous change navigation for focus handling. |
+| `viewMode: ViewMode` | Mirrors `?view=synoptic\|unified`, defaulting to `ViewMode.SYNOPTIC`. |
+| `movesEnabled: boolean` | Mirrors `?moves=on\|off`, defaulting from `comparison.options.detect_moves`. |
+| `activeBlockIndex: number \| null` | Mirrors `?block=<index>` and drives focus and scroll. Bounded by `total_blocks` for intent and by loaded blocks for rendering, so a citation into an unloaded window waits rather than being discarded. |
+| `blocks: DiffBlock[]` | `comparison.blocks` when `truncated` is `false`; otherwise grows window by window from `GET /api/v1/comparisons/{comparison_id}/blocks?offset=&limit=` until it reaches `total_blocks`. Owned by `useWindowedBlocks`. |
 
 ### Behaviour
 
@@ -155,7 +156,18 @@ Keyboard navigation moves between changed blocks: `BlockStatus.MODIFIED`, `Block
 
 Scroll-to-block may be smooth only when `prefers-reduced-motion` is not `reduce`; otherwise the component must jump immediately and preserve focus without animation.
 
-When `comparison.truncated` is `true`, the component treats `comparison.blocks` as the initial window only. It displays the loaded range, uses `comparison.total_blocks` as the authoritative count, and fetches more blocks through `GET /api/v1/comparisons/{comparison_id}/blocks?offset=&limit=`. The performance rules for switching to windowed blocks are defined in [Performance and scale](./11-performance-and-scale.md).
+When `comparison.truncated` is `true`, the component treats `comparison.blocks` as the initial window only, uses `comparison.total_blocks` as the authoritative count, and loads the remaining windows through `GET /api/v1/comparisons/{comparison_id}/blocks?offset=&limit=` until the collation is whole. See [Frontend architecture](./08-frontend-architecture.md) for why every window is loaded rather than only those approached by scrolling, and [Performance and scale](./11-performance-and-scale.md) for when the server windows a comparison at all.
+
+Rendering a window as though it were the whole collation is prohibited. While loading, the viewer must:
+
+| Requirement | Reason |
+|---|---|
+| State how many blocks of how many have loaded | A reader drawing conclusions about a text needs to know whether they are looking at all of it. `LoadingProgress` owns this, in a polite live region. |
+| Mark counts derived from loaded blocks as provisional | The change count grows as windows arrive. `ChangeNavigator` takes `partial` and renders "so far", because a number that will change must not read as a finding. |
+| Keep `?block=` even when its target is unloaded | Stripping it is how a shared citation into a long manuscript silently becomes a link to the top of the document. |
+| Report a failed window honestly, with a retry | A comparison that stopped loading part-way is incomplete, and saying nothing would leave the reader with a plausible-looking fragment. |
+
+Metrics in `DiffSummaryBar` always describe the whole comparison, because the server computes them over the whole comparison. That mismatch with a partially loaded block list is precisely why the loading state has to be visible.
 
 ### Synoptic rendering
 
@@ -230,6 +242,32 @@ Navigation must go through `scrollToBlock` rather than querying the DOM: a row o
 ### Design tokens consumed
 
 `VirtualizedSynopticView` consumes `--color-rule`, `--color-vellum`, `--color-moved`, `--color-moved-underlay`, `--font-ui`, and `--leading-manuscript`.
+
+## LoadingProgress
+
+`LoadingProgress` reports how much of a windowed comparison has arrived. It renders nothing visible once the collation is whole, and it is the only place the viewer admits to being incomplete — so its absence when blocks are still loading is a defect, not a cosmetic omission.
+
+### Props
+
+```ts
+export interface LoadingProgressProps {
+  loadedBlocks: number;
+  totalBlocks: number;
+  isComplete: boolean;
+  error: string | null;
+  onRetry: () => void;
+}
+```
+
+### Requirements
+
+| State | Rendering |
+|---|---|
+| Loading | Visible, `data-state="loading"`, in an `aria-live="polite"` region. States loaded and total, and warns that metrics describe the whole comparison while navigation reaches only what has loaded. |
+| Complete | Visually hidden, `data-state="complete"`, announced once so a screen-reader user learns the earlier provisional counts can now be trusted. |
+| Failed | `role="alert"`, `data-state="error"`, stating how many of how many blocks loaded, and offering a retry that resumes from the last successful offset rather than restarting. |
+
+Not shown at all when `comparison.truncated` is `false`, which is the ordinary case; a short comparison must not acquire loading chrome it never needs.
 
 ## SyncScrollContainer
 

@@ -5,6 +5,7 @@ import { Virtuoso, type VirtuosoHandle } from "react-virtuoso";
 import type { DiffBlock } from "@/lib/types";
 import { BlockConnector } from "./BlockConnector";
 import { DiffBlockRow } from "./DiffBlockRow";
+import { OVERSCAN_PX, type BlockListHandle } from "./blockList";
 
 /**
  * The synoptic reading surface, virtualized.
@@ -35,17 +36,18 @@ import { DiffBlockRow } from "./DiffBlockRow";
  * it would need a deliberate second view — see docs/14-roadmap.md.
  */
 
-const OVERSCAN_PX = 1200;
-
-export interface SynopticHandle {
-  scrollToBlock: (index: number) => void;
-}
-
 export const VirtualizedSynopticView = forwardRef<
-  SynopticHandle,
-  { blocks: DiffBlock[]; showStructuralMarkers: boolean; height?: string }
+  BlockListHandle,
+  {
+    blocks: DiffBlock[];
+    showStructuralMarkers: boolean;
+    height?: string;
+    /** Render every row instead of a window. Used for printing, where a
+     *  virtualized list would put a fraction of the collation on paper. */
+    renderAll?: boolean;
+  }
 >(function VirtualizedSynopticView(
-  { blocks, showStructuralMarkers, height = "70vh" },
+  { blocks, showStructuralMarkers, height = "70vh", renderAll = false },
   ref,
 ) {
   const virtuoso = useRef<VirtuosoHandle | null>(null);
@@ -55,6 +57,17 @@ export const VirtualizedSynopticView = forwardRef<
       virtuoso.current?.scrollToIndex({ index, align: "center", behavior: "auto" });
     },
   }));
+
+  const row = (index: number, block: DiffBlock) => (
+    <div
+      className="grid grid-cols-1 gap-x-4 md:grid-cols-[minmax(0,1fr)_2rem_minmax(0,1fr)]"
+      data-block-index={index}
+    >
+      <DiffBlockRow block={block} side="a" showStructuralMarkers={showStructuralMarkers} />
+      <BlockConnector block={block} showMoves={showStructuralMarkers} />
+      <DiffBlockRow block={block} side="b" showStructuralMarkers={showStructuralMarkers} />
+    </div>
+  );
 
   return (
     <div data-testid="synoptic-view" className="mt-6">
@@ -68,37 +81,28 @@ export const VirtualizedSynopticView = forwardRef<
         <PaneHeading>Manuscript B</PaneHeading>
       </div>
 
-      <Virtuoso
-        ref={virtuoso}
-        data={blocks}
-        style={{ height }}
-        increaseViewportBy={OVERSCAN_PX}
-        data-testid="synoptic-scroller"
-        // Keyed by block id rather than by index. Virtuoso defaults to the
-        // index, which is fine while `blocks` is the whole comparison but
-        // silently recycles a mounted row into a different block once the
-        // windowed endpoint starts replacing ranges — the reader would see
-        // one witness's prose under another's gutter.
-        computeItemKey={(_, block) => block.id}
-        itemContent={(index, block) => (
-          <div
-            className="grid grid-cols-1 gap-x-4 md:grid-cols-[minmax(0,1fr)_2rem_minmax(0,1fr)]"
-            data-block-index={index}
-          >
-            <DiffBlockRow
-              block={block}
-              side="a"
-              showStructuralMarkers={showStructuralMarkers}
-            />
-            <BlockConnector block={block} showMoves={showStructuralMarkers} />
-            <DiffBlockRow
-              block={block}
-              side="b"
-              showStructuralMarkers={showStructuralMarkers}
-            />
-          </div>
-        )}
-      />
+      {renderAll ? (
+        <div data-testid="synoptic-scroller">
+          {blocks.map((block, index) => (
+            <div key={block.id}>{row(index, block)}</div>
+          ))}
+        </div>
+      ) : (
+        <Virtuoso
+          ref={virtuoso}
+          data={blocks}
+          style={{ height }}
+          increaseViewportBy={OVERSCAN_PX}
+          data-testid="synoptic-scroller"
+          // Keyed by block id rather than by index. Virtuoso defaults to the
+          // index, which is fine while `blocks` is the whole comparison but
+          // silently recycles a mounted row into a different block once the
+          // windowed endpoint starts replacing ranges — the reader would see
+          // one witness's prose under another's gutter.
+          computeItemKey={(_, block) => block.id}
+          itemContent={row}
+        />
+      )}
     </div>
   );
 });

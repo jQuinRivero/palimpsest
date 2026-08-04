@@ -5,14 +5,15 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { ComparisonResult, ViewMode } from "@/lib/types";
 import { teiExportUrl } from "@/lib/api";
 import { ChangeNavigator } from "./ChangeNavigator";
-import { DiffBlockRow } from "./DiffBlockRow";
 import { DiffSummaryBar } from "./DiffSummaryBar";
 import {
   VirtualizedSynopticView,
-  type SynopticHandle,
 } from "./VirtualizedSynopticView";
+import { VirtualizedUnifiedView } from "./VirtualizedUnifiedView";
+import type { BlockListHandle } from "./blockList";
 import { useBlockNavigation } from "@/lib/hooks/useBlockNavigation";
 import { useWindowedBlocks } from "@/lib/hooks/useWindowedBlocks";
+import { usePrintAll } from "@/lib/hooks/usePrintAll";
 import { LoadingProgress } from "./LoadingProgress";
 
 function ViewModeToggle({
@@ -150,15 +151,17 @@ export function DiffViewer({
     replaceUrlState({ moves: enabled ? null : "off" });
   };
 
-  const synopticRef = useRef<SynopticHandle | null>(null);
+  const readingRef = useRef<BlockListHandle | null>(null);
   const nav = useBlockNavigation(blocks, initialBlockIndex, windowed.totalBlocks);
+  const printAll = usePrintAll();
 
   // A virtualized row may never have been mounted, so scrolling to a block
-  // must go through the virtualizer rather than through the DOM.
+  // must go through the virtualizer rather than through the DOM. Both reading
+  // surfaces answer to the same handle, so this no longer cares which is on
+  // screen — before, unified was excluded and silently relied on the DOM.
   useEffect(() => {
     if (nav.activeBlockIndex === null) return;
-    if (mode !== "synoptic") return;
-    synopticRef.current?.scrollToBlock(nav.activeBlockIndex);
+    readingRef.current?.scrollToBlock(nav.activeBlockIndex);
   }, [mode, nav.activeBlockIndex]);
 
   return (
@@ -201,21 +204,18 @@ export function DiffViewer({
         </p>
       ) : mode === "synoptic" ? (
         <VirtualizedSynopticView
-          ref={synopticRef}
+          ref={readingRef}
           blocks={blocks}
           showStructuralMarkers={movesEnabled}
+          renderAll={printAll}
         />
       ) : (
-        <section className="mt-6 max-w-prose" aria-label="Unified reading">
-          {blocks.map((block) => (
-            <DiffBlockRow
-              key={`u-${block.id}`}
-              block={block}
-              side="unified"
-              showStructuralMarkers={movesEnabled}
-            />
-          ))}
-        </section>
+        <VirtualizedUnifiedView
+          ref={readingRef}
+          blocks={blocks}
+          showStructuralMarkers={movesEnabled}
+          renderAll={printAll}
+        />
       )}
     </div>
   );

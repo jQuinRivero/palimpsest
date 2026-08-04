@@ -7,20 +7,26 @@ __pycache__/
 *.so
 
 # Distribution / packaging
+#
+# These are anchored to backend/ rather than left bare. An unanchored `lib/`
+# matches at any depth, which in this monorepo silently swallowed the whole of
+# frontend/lib — the generated API types and the typed client. Git ignores
+# such files without comment, so the loss is invisible until something fails
+# to build somewhere else.
 .Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-share/python-wheels/
+backend/build/
+backend/develop-eggs/
+backend/dist/
+backend/downloads/
+backend/eggs/
+backend/.eggs/
+backend/lib/
+backend/lib64/
+backend/parts/
+backend/sdist/
+backend/var/
+backend/wheels/
+backend/share/python-wheels/
 *.egg-info/
 .installed.cfg
 *.egg

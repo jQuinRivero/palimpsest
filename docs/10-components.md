@@ -18,7 +18,8 @@ The client does not compute a diff. It uploads two witnesses, asks the backend f
 └─ DiffViewer
    ├─ DiffSummaryBar
    ├─ ViewModeToggle
-   ├─ SyncScrollContainer              when ViewMode is SYNOPTIC
+   ├─ ChangeNavigator
+   ├─ VirtualizedSynopticView          when ViewMode is SYNOPTIC
    │  ├─ DiffBlockRow                  Manuscript A pane
    │  │  ├─ ChangeGutter
    │  │  └─ TokenSpan
@@ -37,12 +38,12 @@ The gutter shows block ordinals from `a_index` and `b_index`. These are not rend
 
 | Convention | Requirement |
 |---|---|
-| Client boundary | `ManuscriptUploader`, `DiffViewer`, `SyncScrollContainer`, `DiffSummaryBar`, `DiffBlockRow`, `TokenSpan`, `ChangeGutter`, `ViewModeToggle`, `BlockConnector`, and `EmptyState` are client components because they read browser input, URL state, focus state, measured layout, or scroll position. |
+| Client boundary | `ManuscriptUploader`, `DiffViewer`, `VirtualizedSynopticView`, `DiffSummaryBar`, `DiffBlockRow`, `TokenSpan`, `ChangeGutter`, `ChangeNavigator`, `ViewModeToggle`, `BlockConnector`, and `EmptyState` are client components because they read browser input, URL state, focus state, measured layout, or scroll position. |
 | Naming | Public props use `comparisonId`, `comparison`, `blocks`, `metrics`, `options`, `a`, `b`, `a_index`, and `b_index` only where those names mirror the contract. UI text always says Manuscript A and Manuscript B, never positional pane labels. |
 | Memoization | `TokenSpan` is memoized by `text`, `status`, and announcement mode. `DiffBlockRow` is memoized by `DiffBlock.id`, pane, expansion state, and focus state. Handlers passed into virtualized rows are stable callbacks. |
 | DOM discipline | A 100,000-word manuscript can produce about 120,000 word tokens per witness before payload run-coalescing. A payload `Token` is a contiguous run, not necessarily one word. Rows render only the current virtual window and must never compute metrics by counting `Token` array entries. |
 | URL state | `?view=synoptic` maps to `ViewMode.SYNOPTIC`; `?view=unified` maps to `ViewMode.UNIFIED`. `?block=<index>` uses the block ordinal, not a DOM row number. `?moves=on|off` controls whether move connectors are shown; it does not mutate `DiffOptions.detect_moves`, which only records how the backend computed the payload. |
-| Testability hooks | Components expose stable `data-testid` values for the component root and block ids: `manuscript-uploader`, `diff-viewer`, `sync-scroll-container`, `diff-summary-bar`, `diff-block-row-{id}`, and `token-{status}`. Hooks must not encode visual position. |
+| Testability hooks | Components expose stable `data-testid` values for the component root and block ids: `manuscript-uploader`, `diff-viewer`, `synoptic-view`, `diff-summary-bar`, `diff-block-row-{id}`, and `token-{status}`. Hooks must not encode visual position. |
 
 ## ManuscriptUploader
 
@@ -150,7 +151,7 @@ export interface DiffViewerProps {
 
 `DiffViewer` reads URL state on mount and writes it with replacement navigation so view changes do not pollute history. Unknown `?view=` values fall back to `synoptic`. Unknown `?moves=` values fall back to `on` when `comparison.options.detect_moves` is `true`.
 
-Keyboard navigation moves between changed blocks: `BlockStatus.MODIFIED`, `BlockStatus.INSERTED`, `BlockStatus.DELETED`, `BlockStatus.MOVED`, `BlockStatus.SPLIT`, and `BlockStatus.MERGED`. Next and previous change commands update `?block=<index>`, focus the target row, and ask `SyncScrollContainer` or the unified list to scroll the block into view.
+Keyboard navigation moves between changed blocks: `BlockStatus.MODIFIED`, `BlockStatus.INSERTED`, `BlockStatus.DELETED`, `BlockStatus.MOVED`, `BlockStatus.SPLIT`, and `BlockStatus.MERGED`. Next and previous change commands update `?block=<index>`, focus the target row, and ask the virtualizer to scroll the block into view. The request must go through the virtualizer rather than the DOM, because a row outside the rendered window does not exist to be scrolled to.
 
 Scroll-to-block may be smooth only when `prefers-reduced-motion` is not `reduce`; otherwise the component must jump immediately and preserve focus without animation.
 
@@ -158,7 +159,7 @@ When `comparison.truncated` is `true`, the component treats `comparison.blocks` 
 
 ### Synoptic rendering
 
-Synoptic view renders two panes labelled Manuscript A and Manuscript B inside `SyncScrollContainer`. Each pane is virtualized with `react-virtuoso`. A single `DiffBlock` is rendered across both panes:
+Synoptic view renders two columns labelled Manuscript A and Manuscript B inside `VirtualizedSynopticView`. It is one `react-virtuoso` list whose rows are three-cell grids, not two virtualized panes. A single `DiffBlock` is rendered across both columns of one row:
 
 | `BlockStatus` | Manuscript A pane | Manuscript B pane | Row correspondence |
 |---|---|---|---|
@@ -166,7 +167,7 @@ Synoptic view renders two panes labelled Manuscript A and Manuscript B inside `S
 | `MODIFIED` | `a_tokens` with `DELETION` spans | `b_tokens` with `INSERTION` spans | The taller pane determines the shared row height. |
 | `DELETED` | Content from `a_tokens` | Held-open gap or collapsed marker | The gap preserves the reading line across panes. |
 | `INSERTED` | Held-open gap or collapsed marker | Content from `b_tokens` | The gap preserves the reading line across panes. |
-| `MOVED` | Content where the block occurs in Manuscript A | Content where the aligned block occurs in Manuscript B | `BlockConnector` shows non-monotonic correspondence; scroll sync uses anchors, not pixels. |
+| `MOVED` | Content where the block occurs in Manuscript A | Content where the aligned block occurs in Manuscript B | `BlockConnector` shows non-monotonic correspondence; the shared grid row keeps the pair aligned. |
 | `SPLIT` | Source block member of `group_id` | Multiple target blocks sharing `group_id` | The group is measured as a composite anchor. |
 | `MERGED` | Multiple source blocks sharing `group_id` | Target block member of `group_id` | The group is measured as a composite anchor. |
 
@@ -192,6 +193,43 @@ Unified view renders one column at `--measure-prose`. It uses `DiffBlock.tokens`
 ### Design tokens consumed
 
 `DiffViewer` consumes `--color-ink`, `--color-ink-muted`, `--color-paper`, `--color-vellum`, `--color-rule`, `--font-ui`, `--font-manuscript`, `--measure-prose`, and `--leading-manuscript`.
+
+## VirtualizedSynopticView
+
+`VirtualizedSynopticView` renders synoptic view. It is **one** `react-virtuoso` list, not two: each row is a three-cell grid holding the Manuscript A cell, the `BlockConnector`, and the Manuscript B cell for a single `DiffBlock`. Corresponding blocks therefore share a row and are aligned by layout, which is why no scroll synchronization exists to go wrong. See [SyncScrollContainer](#syncscrollcontainer) for the design this replaced and why.
+
+### Props and handle
+
+```ts
+export interface SynopticHandle {
+  scrollToBlock: (index: number) => void;
+}
+
+// Props
+{
+  blocks: DiffBlock[];
+  showStructuralMarkers: boolean;
+  height?: string;         // default "70vh"
+}
+```
+
+Navigation must go through `scrollToBlock` rather than querying the DOM: a row outside the rendered window has no element to scroll to, so a DOM-based jump silently fails on exactly the long manuscripts virtualization exists for.
+
+### Requirements
+
+| Concern | Requirement |
+|---|---|
+| Row identity | Rows are keyed by `DiffBlock.id`, never by array position. This is load-bearing only once windowed loading is wired in, where index keying would recycle a mounted row into a different block. |
+| Height | Row height is the taller of the two cells, so the two witnesses start on the same baseline. |
+| Held-open gaps | `INSERTED` and `DELETED` render an empty cell on the absent side rather than collapsing the row, preserving the reading line across the grid. |
+| Overscan | Expressed in pixels through `increaseViewportBy`, because that is the unit Virtuoso offers and prose block heights are not known in advance. The default is 1200px, roughly a viewport of prose above and below. |
+| Pane headings | Rendered as real headings outside the scroller, so they remain visible while rows move beneath them and are reachable by assistive technology rather than read as decorative column labels. |
+| Reduced motion | `scrollToBlock` uses `behavior: "auto"`, so jumps are always immediate and `prefers-reduced-motion` needs no special case. |
+| Single-column fallback | Below the `md` breakpoint the grid collapses to one column and the connector is hidden; there is no viewport at which two prose columns are legible on a phone. |
+
+### Design tokens consumed
+
+`VirtualizedSynopticView` consumes `--color-rule`, `--color-vellum`, `--color-moved`, `--color-moved-underlay`, `--font-ui`, and `--leading-manuscript`.
 
 ## SyncScrollContainer
 
@@ -275,7 +313,7 @@ The last pane to receive direct user input drives. While follower positioning is
 
 ### Interaction with `react-virtuoso`
 
-`react-virtuoso` 4.18.10 is required because it provides automatic variable-height measurement through `ResizeObserver` and an imperative handle. `SyncScrollContainer` uses `scrollToIndex` for jumps, reads rendered range callbacks to know what is mounted, and avoids direct DOM queries except for row measurements exposed through row refs.
+`react-virtuoso` 4.18.11 is required because it provides automatic variable-height measurement through `ResizeObserver` and an imperative handle. `SyncScrollContainer` uses `scrollToIndex` for jumps, reads rendered range callbacks to know what is mounted, and avoids direct DOM queries except for row measurements exposed through row refs.
 
 Overscan is expressed in blocks, not pixels. The default is enough to include the next likely anchor above and below the viewport. When synchronization requests an unmeasured anchor outside overscan, the container requests a block page if needed, then forces the virtualizer to mount the anchor before applying the measured correction.
 

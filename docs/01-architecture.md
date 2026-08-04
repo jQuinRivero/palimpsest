@@ -83,28 +83,31 @@ frontend/
   components/
     ManuscriptUploader.tsx
     DiffViewer.tsx
-    SyncScrollContainer.tsx
+    VirtualizedSynopticView.tsx
     DiffSummaryBar.tsx
     DiffBlockRow.tsx
     TokenSpan.tsx
     ChangeGutter.tsx
-    ViewModeToggle.tsx
+    ChangeNavigator.tsx
     BlockConnector.tsx
     EmptyState.tsx
   lib/
     api.ts
     types.ts
-    url-state.ts
+    hooks/
+      useBlockNavigation.ts
 ```
 
 | Frontend path | Owns |
 |---|---|
 | `frontend/app/page.tsx` | Upload route `/`, centered on `ManuscriptUploader`. |
 | `frontend/app/c/[comparisonId]/page.tsx` | Viewer route `/c/[comparisonId]`, loading and rendering a `ComparisonResult`. |
-| `frontend/components/` | Exact components listed in the contract: `ManuscriptUploader`, `DiffViewer`, `SyncScrollContainer`, `DiffSummaryBar`, `DiffBlockRow`, `TokenSpan`, `ChangeGutter`, `ViewModeToggle`, `BlockConnector`, and `EmptyState`. |
+| `frontend/components/` | `ManuscriptUploader`, `DiffViewer`, `VirtualizedSynopticView`, `DiffSummaryBar`, `DiffBlockRow`, `TokenSpan`, `ChangeGutter`, `ChangeNavigator`, `BlockConnector`, and `EmptyState`. `ViewModeToggle` is a private component inside `DiffViewer.tsx`, not a separate module: it is three buttons with no state of its own and no second consumer. |
 | `frontend/lib/api.ts` | Thin API client for `/api/v1` endpoints. |
 | `frontend/lib/types.ts` | TypeScript mirror of the JSON payload contract from [Data schema](./05-data-schema.md). |
-| `frontend/lib/url-state.ts` | URL state for `?view=synoptic|unified`, `?block=<index>`, and `?moves=on|off`. |
+| `frontend/lib/hooks/useBlockNavigation.ts` | Active block, next/previous change traversal, focus, and the `?block=<index>` deep link. |
+
+URL state is read where it is used rather than centralized in a `url-state` module: `?view=` is resolved server-side in the viewer route, `?moves=` in `DiffViewer`, and `?block=` in `useBlockNavigation`. A shared module would have been a single import with three unrelated consumers.
 
 ## The three services and their boundaries
 
@@ -257,7 +260,7 @@ Pinned dependency versions are floors verified at authoring, not lockfile entrie
 | Next.js | 16.3.0 | MIT | Provides the App Router frontend for `/` and `/c/[comparisonId]`. |
 | React | 19 | MIT | Renders typed diff blocks and tokens in the browser. |
 | Tailwind CSS | 4.3.3 | MIT | Provides CSS-first `@theme` tokens for the design system; see [ADR-0005](./adr/0005-tailwind-v4-css-first-tokens.md). |
-| `react-virtuoso` | 4.18.10 | MIT | Virtualizes long comparisons without requiring the client to compute diffs. |
+| `react-virtuoso` | 4.18.11 | MIT | Virtualizes long comparisons without requiring the client to compute diffs. |
 
 Rejected dependencies and approaches:
 

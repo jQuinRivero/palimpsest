@@ -143,9 +143,13 @@ Storage tests exercise the `SessionStore` contract and the SQLite implementation
 
 ### Frontend tests
 
-Component tests cover every component named in [Components](./10-components.md): `ManuscriptUploader`, `DiffViewer`, `SyncScrollContainer`, `DiffSummaryBar`, `DiffBlockRow`, `TokenSpan`, `ChangeGutter`, `ViewModeToggle`, `BlockConnector`, and `EmptyState`.
+Component tests cover every component named in [Components](./10-components.md): `ManuscriptUploader`, `DiffViewer`, `VirtualizedSynopticView`, `DiffSummaryBar`, `DiffBlockRow`, `TokenSpan`, `ChangeGutter`, `ChangeNavigator`, `BlockConnector`, and `EmptyState`.
 
-`SyncScrollContainer` gets special attention. Its anchor algorithm must synchronize by aligned block anchors, not by pixel ratio. Tests should simulate unequal block heights, `MOVED`, `SPLIT`, and `MERGED` relationships, font loading changes, and a jump to `?block=<index>`.
+Tests must exercise the real components. A fixture that serves hand-written HTML and reimplements the behaviour under test asserts only that the test file is self-consistent, and will pass with the component broken or deleted. Where a route fetches server-side and cannot be intercepted from the browser, drive the real API rather than substituting a facsimile of the page. A structural-rendering fixture doing exactly this was removed for that reason.
+
+The corresponding check is mutation, not coverage: change a rendered glyph or label and confirm the test fails. Coverage cannot distinguish a test that exercises a component from one that merely renders beside it.
+
+`VirtualizedSynopticView` gets special attention, because virtualization breaks the assumption that everything in the payload is in the DOM. Tests should cover a jump to a block that has never been mounted, `MOVED`, `SPLIT`, and `MERGED` relationships, unequal cell heights within a row, and the single-column collapse below the `md` breakpoint.
 
 Virtualization tests use a large `ComparisonResult` payload and assert that visible rows render, offscreen rows do not explode DOM size, anchor jumps remain stable, and accessible names remain present when rows mount and unmount.
 

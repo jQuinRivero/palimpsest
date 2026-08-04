@@ -11,7 +11,7 @@ This document defines the frontend architecture for uploading witnesses, fetchin
 | Next.js App Router | 16.3.0 | The App Router is the default and recommended Next.js architecture; it gives `palimpsest` server components, nested route boundaries, and streaming where they help first paint. |
 | React | 19 | React 19 is the rendering model assumed by Next.js 16 and lets the app keep interaction local without adding an application state framework. |
 | Tailwind CSS | 4.3.3 | Tailwind v4 is CSS-first, which matches the design-system requirement that tokens live in CSS custom properties rather than a JavaScript configuration file. |
-| `react-virtuoso` | 4.18.10 | The viewer renders variable-height prose blocks; fixed-row virtualization is wrong because manuscript blocks reflow with viewport width and content density. |
+| `react-virtuoso` | 4.18.11 | The viewer renders variable-height prose blocks; fixed-row virtualization is wrong because manuscript blocks reflow with viewport width and content density. |
 
 No client-side diffing library is needed at all. The backend computes the collation and returns a finished `ComparisonResult`; the browser only renders typed blocks and tokens. The npm `diff-match-patch` package is frozen at 2018 and irrelevant here, both because it is stale and because client-side diffing would violate [ADR-0004](./adr/0004-server-side-diff-computation.md).
 
@@ -27,29 +27,29 @@ frontend/
         page.tsx               # Viewer route; server component fetches the comparison.
     error.tsx                  # Route-level error boundary for recoverable rendering failures.
     not-found.tsx              # Expired or unknown comparison/document states.
-    loading.tsx                # Route-level loading UI while server data resolves.
   components/
     ManuscriptUploader.tsx     # Upload form and witness metadata display.
-    DiffViewer.tsx             # Top-level interactive viewer composition.
-    SyncScrollContainer.tsx    # Anchor-linked synoptic scrolling.
+    DiffViewer.tsx             # Top-level interactive viewer composition; contains ViewModeToggle.
+    VirtualizedSynopticView.tsx # Virtualized synoptic grid; supersedes SyncScrollContainer.
     DiffSummaryBar.tsx         # Metrics and navigation summary.
     DiffBlockRow.tsx           # One rendered `DiffBlock`.
     TokenSpan.tsx              # One rendered `Token`.
     ChangeGutter.tsx           # Block ordinals and block-level change markers.
-    ViewModeToggle.tsx         # `synoptic` / `unified` control.
+    ChangeNavigator.tsx        # Next/previous change controls and their announcements.
     BlockConnector.tsx         # Visual connector for aligned block pairs and moves.
     EmptyState.tsx             # Helpful state for no upload, no changes, or expired links.
   lib/
     api.ts                     # Typed API wrapper and `problem+json` handling.
     types.ts                   # TypeScript mirror of the Pydantic models; see doc 05.
     hooks/
-      useComparison.ts         # Loading/polling/page-fetch orchestration.
-      useSyncScroll.ts         # Anchor-linked block synchronization.
-      useViewMode.ts           # URL-backed view mode state.
       useBlockNavigation.ts    # Active block and next/previous change navigation.
   styles/
     globals.css                # Tailwind v4 import, `@theme` tokens, base document styles.
 ```
+
+There is no `loading.tsx`; see [Route-level `loading.tsx` is deliberately absent](#route-level-loadingtsx-is-deliberately-absent).
+
+There is also no `useComparison` hook. The viewer route is a **server** component that awaits `getComparison` directly, so the payload arrives with the first byte of HTML and there is no client-side loading state to orchestrate. This is what makes an unknown comparison return a real `404`, and it means a shared `?block=` link is correct on first paint rather than after a hydration correction. Client-side fetching returns only if the accepted-and-poll path needs to surface progress in the viewer, which today it does not — polling happens in the uploader before redirect.
 
 Document [10](./10-components.md) owns component props and internal component state. This document only fixes the architectural responsibilities and the seams between routing, fetching, rendering, and interaction.
 
@@ -93,12 +93,12 @@ These components must be `"use client"`:
 
 | Component or hook | Why it is client-side |
 |---|---|
-| `DiffViewer` | Owns interactive view state, keyboard navigation, active block, and composition of virtualized panes. |
-| `SyncScrollContainer` and `useSyncScroll` | Reads scroll positions, observes block anchors, and aligns panes after layout. |
-| `ViewModeToggle` and `useViewMode` | Mutates URL state in response to user interaction. |
+| `DiffViewer` | Owns interactive view state, keyboard navigation, active block, and composition of the virtualized view. |
+| `VirtualizedSynopticView` | Runs `react-virtuoso`, which measures rendered rows in the browser. |
+| `ViewModeToggle` | Mutates URL state in response to user interaction. |
 | `DiffBlockRow`, when virtualized | Runs inside `react-virtuoso` and participates in measured, variable-height rendering. |
 | `TokenSpan`, when announcing inline changes | May carry interactive focus and screen-reader-only labels. |
-| `useBlockNavigation` | Handles keyboard events, focus management, and URL replacement for the active block. |
+| `ChangeNavigator` and `useBlockNavigation` | Handle keyboard events, focus management, live announcements, and URL replacement for the active block. |
 
 Very large payloads use the windowed path defined in [Performance and scale](./11-performance-and-scale.md): `GET /api/v1/comparisons/{comparison_id}/blocks?offset=&limit=`. The server route should request `GET /api/v1/comparisons/{comparison_id}?include_blocks=false` when the full `blocks` array would exceed the rendering budget. In that mode, the server sends metadata and initial URL state, and the client fetches `BlockPage` windows as the virtualizer approaches unloaded ranges. The switch is driven by `truncated: true`, `total_blocks`, and response-size limits from doc 11, not by ad hoc browser heuristics.
 
@@ -150,7 +150,7 @@ TypeScript types mirror the Pydantic models in [Data schema](./05-data-schema.md
 
 Errors use the RFC 9457 `application/problem+json` shape from [API reference](./06-api-reference.md): `type`, `title`, `status`, `detail`, and `code`. `lib/api.ts` should parse that shape into a typed application error and preserve the backend `code`, including `COMPARISON_NOT_FOUND`, `COMPARISON_EXPIRED`, `DIFF_BUDGET_EXCEEDED`, and `RATE_LIMITED`.
 
-`POST /api/v1/comparisons` may return `202` with an accepted comparison. The uploader enters a polling path with bounded exponential backoff and jitter, displays progress copy that does not promise completion timing, and stops cleanly on terminal `problem+json` errors. Route-level `loading.tsx` handles server fetch latency; `error.tsx` handles rendering and data exceptions; `not-found.tsx` handles unknown or expired artifacts.
+`POST /api/v1/comparisons` may return `202` with an accepted comparison. The uploader enters a polling path with bounded exponential backoff and jitter, displays progress copy that does not promise completion timing, and stops cleanly on terminal `problem+json` errors. Because polling completes before the redirect, the viewer route always loads a finished comparison. `error.tsx` handles rendering and data exceptions; `not-found.tsx` handles unknown or expired artifacts; server fetch latency is absorbed by the server render itself rather than by a route-level loading state.
 
 ## State management
 
@@ -160,26 +160,22 @@ The reason is structural: the `ComparisonResult` payload is immutable once fetch
 
 | State | Owner |
 |---|---|
-| View mode | `useViewMode`, backed by `?view=synoptic|unified`. |
-| Active block | `useBlockNavigation`, backed by `?block=<index>`. |
-| Scroll anchor | `useSyncScroll`, derived from measured block anchors. |
-| Move connector visibility | `DiffViewer`, backed by `?moves=on|off`. |
-| Loaded block pages | `useComparison`, only when using the windowed block endpoint. |
+| View mode | The viewer route, backed by `?view=synoptic\|unified`, resolved server-side so the first paint is already the requested mode. |
+| Active block | `useBlockNavigation`, backed by `?block=<index>`, seeded from the server for the same reason. |
+| Move connector visibility | `DiffViewer`, backed by `?moves=on\|off`. |
+| Scroll position | `react-virtuoso` inside `VirtualizedSynopticView`; no application-level scroll state exists. |
 
-`useComparison` owns API loading, accepted polling, and block-page caching. `useSyncScroll` owns synchronized scrolling. `useViewMode` owns URL-backed view selection. `useBlockNavigation` owns next/previous change traversal, focus, and active block updates. Anything beyond those hooks should be justified by doc 10 rather than added as a hidden architecture choice.
+`useBlockNavigation` owns next/previous change traversal, focus, live announcements, and active block updates, and is the only custom hook in the application. Anything beyond it should be justified by doc 10 rather than added as a hidden architecture choice.
 
-## Synchronized scrolling
+## Scroll alignment
 
-Synchronized scrolling is anchor-linked to aligned block pairs, never pixel-linked. The two panes contain different amounts of text because insertions, deletions, moves, splits, merges, and prose wrapping change height independently. A pixel or percentage lock drifts immediately and unrecoverably.
+The two panes are not synchronized, because they are not two scrollers. Synoptic view is a **single** virtualized list whose every row is a three-cell grid — Manuscript A, connector, Manuscript B — so corresponding blocks share a row and are aligned by layout. There is one scroll position and drift is not merely corrected but structurally impossible.
 
-The scroll algorithm tracks block anchors:
+The original design solved this the other way, with an anchor-linked algorithm reconciling two independent scrollers after every layout pass. That design was sound and is preserved in [Components](./10-components.md), because it is still what an independently scrolling view would need — a [roadmap](./14-roadmap.md) item. It was not needed here: the problem could be removed instead of solved.
 
-1. Determine the active `DiffBlock` from the pane the researcher is scrolling.
-2. Resolve its aligned counterpart using `a_index`, `b_index`, `group_id`, and `status`.
-3. Scroll the opposite pane so the counterpart block ordinal is visible in the same reading region.
-4. Preserve local reading position within a long block only when both panes expose the same block anchor; otherwise prefer the block boundary over a fake pixel ratio.
+The cost is real and stated plainly: the panes cannot be scrolled independently, so a researcher cannot hold one witness still while ranging over the other, and a single very tall block makes both cells tall.
 
-`MOVED`, `SPLIT`, and `MERGED` blocks may have connectors, but the connector is a visual aid. The block ordinal remains the synchronization anchor.
+`MOVED`, `SPLIT`, and `MERGED` blocks may have connectors, but a connector is a visual aid. The grid row, not the connector, is what puts counterparts side by side.
 
 ## Accessibility and progressive enhancement
 
@@ -189,7 +185,7 @@ Motion is minimal and must honor `prefers-reduced-motion`. Smooth scroll-to-bloc
 
 Inline insertions and deletions need non-colour cues and screen-reader text, as specified in [Design system](./09-design-system.md). The application must not rely on green/red colour alone to convey textual change.
 
-Without JavaScript, `/c/[comparisonId]` still returns server-rendered comparison metadata and a readable initial view for payloads fetched on the server. Interaction degrades: view toggling, virtualization page loading, synchronized scrolling, keyboard jump navigation, and accepted polling require JavaScript. The no-JavaScript fallback should therefore prefer a unified, fully rendered excerpt or an honest message linking to reload when the comparison is ready.
+Without JavaScript, `/c/[comparisonId]` still returns server-rendered comparison metadata and a readable initial view, because the payload is fetched on the server. Interaction degrades: view toggling, virtualized row loading, keyboard jump navigation, and accepted polling require JavaScript. The no-JavaScript fallback should therefore prefer a unified, fully rendered excerpt or an honest message linking to reload when the comparison is ready.
 
 ## Build and development
 

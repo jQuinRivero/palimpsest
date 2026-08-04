@@ -106,11 +106,11 @@ The concurrency cap follows the hard ceiling: 3 comparisons × 512 MB = 1,536 MB
 
 ## Frontend rendering
 
-The frontend uses `react-virtuoso` 4.18.10 because the comparison view has variable-height prose blocks and synchronized panes. The chosen virtualizer provides automatic ResizeObserver measurement and an imperative handle for `scrollToIndex`, both required by [Components](./10-components.md).
+The frontend uses `react-virtuoso` 4.18.11 because the comparison view has variable-height prose blocks. The chosen virtualizer provides automatic ResizeObserver measurement and an imperative handle for `scrollToIndex`, both required by [Components](./10-components.md).
 
 | Rendering budget | Requirement |
 |---|---|
-| Rendered rows | Keep mounted rows under 120 per pane, including overscan. |
+| Rendered rows | Keep mounted rows under 120, including overscan. A row carries both witnesses, so this is 120 rows and not 120 per witness. |
 | DOM nodes per rendered block | Target fewer than 250 nodes for a changed block and fewer than 40 nodes for an unchanged block by coalescing unchanged token runs. |
 | Overscan | Default to 8 blocks above and below the viewport; increase temporarily during keyboard navigation or scroll synchronization jumps. |
 | `TokenSpan` memoization | Memoize by `text`, `status`, and announcement mode. Do not re-render token spans when only scroll position changes. |

@@ -24,7 +24,7 @@ Start at `00` and read forward. Documents `04` and `05` are load-bearing — eve
 | 07 | [Session storage](./07-session-storage.md) | SQLite schema, TTL sweeper, shareable comparison URLs |
 | 08 | [Frontend architecture](./08-frontend-architecture.md) | App Router structure, data fetching, URL as state |
 | 09 | [Design system](./09-design-system.md) | Typography-first tokens and the diff visual language |
-| 10 | [Components](./10-components.md) | `ManuscriptUploader`, `DiffViewer`, `SyncScrollContainer`, `DiffSummaryBar` |
+| 10 | [Components](./10-components.md) | `ManuscriptUploader`, `DiffViewer`, `VirtualizedSynopticView`, `DiffSummaryBar` |
 | 11 | [Performance and scale](./11-performance-and-scale.md) | Budgets for 100k+ word manuscripts, virtualization, backpressure |
 | 12 | [Edge cases](./12-edge-cases.md) | PDF noise, hyphens, ligatures, encodings, RTL, footnotes |
 | 13 | [Testing strategy](./13-testing-strategy.md) | Unit, golden-corpus, contract, and end-to-end testing |

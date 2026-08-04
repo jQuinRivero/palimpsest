@@ -7,11 +7,16 @@ import { join } from "node:path";
 /**
  * Structural change, end to end against the real backend.
  *
- * The sibling `structural.spec.ts` renders the components against a fixture,
- * which cannot exercise the real page: the comparison route fetches in a
- * server component, so `page.route` never sees the request. These tests
- * instead drive the actual API, which now emits MOVED, SPLIT and MERGED, and
- * assert what a researcher would really see.
+ * These tests drive the actual API, which emits MOVED, SPLIT and MERGED, and
+ * assert what a researcher would really see in the real components.
+ *
+ * A sibling `structural.spec.ts` once covered this ground by serving a
+ * hand-written HTML page through `page.route`. It was deleted: because the
+ * comparison route fetches in a server component, `page.route` never sees the
+ * request, so the fixture had to reimplement the gutter glyphs, connectors and
+ * moves toggle inside the test file and then assert against its own output.
+ * That is a tautology — it would have passed with the real components broken
+ * or absent. Anything worth asserting is asserted here instead.
  */
 
 const API = "http://127.0.0.1:8000";
@@ -59,6 +64,14 @@ const SPLIT_A =
 const SPLIT_B =
   "It was a long crossing.\n\nThe waves were grey from the first morning to the last.";
 
+// A merge is a split read backwards, so the same prose exercises both.
+const MERGE_A = SPLIT_B;
+const MERGE_B = SPLIT_A;
+
+// The glyphs the gutter actually renders. Asserting them here rather than
+// recomputing them keeps the reader-facing vocabulary under test.
+const GLYPH = { MOVED: "\u25C6", SPLIT: "\u2442", MERGED: "\u2443" } as const;
+
 test("a moved passage reads as moved, not as a deletion and an insertion", async ({
   page,
   request,
@@ -70,7 +83,14 @@ test("a moved passage reads as moved, not as a deletion and an insertion", async
 
   const moved = page.locator('[data-status="MOVED"]');
   await expect(moved.first()).toBeVisible();
-  await expect(page.getByTestId("gutter-marker-MOVED").first()).toBeVisible();
+
+  const marker = page.getByTestId("gutter-marker-MOVED").first();
+  await expect(marker).toBeVisible();
+  await expect(marker).toHaveText(GLYPH.MOVED);
+
+  // The distance is the whole information content of a move marker: "moved"
+  // alone does not tell a reader where the passage went.
+  await expect(marker).toHaveAttribute("title", /^moved \d+ blocks? (earlier|later)$/);
 
   // The whole point: a move changes no words, so the summary must not claim
   // any were inserted or deleted.
@@ -94,9 +114,28 @@ test("a paragraph split reads as a split group with no wording change", async ({
   // The members must be tied together, or the reader cannot see that the two
   // paragraphs came from one.
   await expect(page.locator('[data-testid^="block-connector-"]').first()).toBeVisible();
-  await expect(page.getByTestId("gutter-marker-SPLIT").first()).toBeVisible();
+  await expect(page.getByTestId("gutter-marker-SPLIT").first()).toHaveText(GLYPH.SPLIT);
 
   // The author changed the paragraphing and not one word.
+  await expect(page.getByTestId("diff-summary-bar")).toContainText(
+    /no wording changes/i,
+  );
+});
+
+test("a merged pair reads as a merge group with no wording change", async ({
+  page,
+  request,
+}) => {
+  const id = await comparisonFor(request, MERGE_A, MERGE_B);
+  await page.goto(`/c/${id}`);
+
+  const rows = page.locator('[data-testid^="diff-block-row-"][data-status="MERGED"]');
+  await expect(rows.first()).toBeVisible();
+  await expect(rows).toHaveCount(4);
+
+  await expect(page.getByTestId("gutter-marker-MERGED").first()).toHaveText(GLYPH.MERGED);
+  await expect(page.locator('[data-testid^="block-connector-"]').first()).toBeVisible();
+
   await expect(page.getByTestId("diff-summary-bar")).toContainText(
     /no wording changes/i,
   );
@@ -110,14 +149,24 @@ test("the moves toggle suppresses move affordances and survives sharing", async 
 
   await page.goto(`/c/${id}`);
   await expect(page.getByTestId("diff-viewer")).toHaveAttribute("data-moves", "on");
+  const connector = page.locator('[data-testid^="block-connector-"]').first();
+  await expect(connector).toHaveAttribute("data-visible", "true");
 
   await page.getByTestId("moves-toggle").click();
   await expect(page.getByTestId("diff-viewer")).toHaveAttribute("data-moves", "off");
   await expect(page).toHaveURL(/moves=off/);
 
+  // Suppressing moves must suppress every affordance, not just the toggle
+  // state: a reader who turned markers off should see plain prose.
+  await expect(connector).toHaveAttribute("data-visible", "false");
+  await expect(page.getByTestId("gutter-marker-MOVED").first()).toHaveText("");
+
   // A researcher must be able to send a colleague the suppressed view.
   await page.goto(`/c/${id}?moves=off`);
   await expect(page.getByTestId("diff-viewer")).toHaveAttribute("data-moves", "off");
+  await expect(
+    page.locator('[data-testid^="block-connector-"]').first(),
+  ).toHaveAttribute("data-visible", "false");
 });
 
 test("structural rendering has no accessibility violations", async ({

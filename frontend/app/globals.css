@@ -104,6 +104,7 @@ body {
   [role="button"],
   [data-testid="change-navigator"],
   [data-testid="moves-toggle"],
+  [data-testid="export-tei"],
   [aria-label="Reading mode"],
   [data-testid^="block-connector-"] {
     display: none !important;

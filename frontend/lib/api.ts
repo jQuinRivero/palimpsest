@@ -106,3 +106,15 @@ export function getComparisonBlocks(
     `/api/v1/comparisons/${comparisonId}/blocks?offset=${offset}&limit=${limit}`,
   );
 }
+
+/**
+ * The TEI export is a URL rather than a fetch.
+ *
+ * The endpoint answers with `Content-Disposition: attachment`, so an ordinary
+ * link downloads the file — no blob, no object URL to revoke, and it still
+ * works with JavaScript disabled. Fetching it into memory would also mean
+ * holding a whole manuscript's markup in the tab to hand it straight back.
+ */
+export function teiExportUrl(comparisonId: string): string {
+  return `${API_BASE}/api/v1/comparisons/${encodeURIComponent(comparisonId)}/export/tei`;
+}

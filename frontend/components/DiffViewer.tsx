@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { ComparisonResult, ViewMode } from "@/lib/types";
+import { teiExportUrl } from "@/lib/api";
 import { ChangeNavigator } from "./ChangeNavigator";
 import { DiffBlockRow } from "./DiffBlockRow";
 import { DiffSummaryBar } from "./DiffSummaryBar";
@@ -64,14 +65,33 @@ function MovesToggle({
   );
 }
 
+function ExportLink({ comparisonId }: { comparisonId: string }) {
+  return (
+    <a
+      href={teiExportUrl(comparisonId)}
+      // The endpoint sends Content-Disposition, so this is an ordinary link
+      // rather than a fetch: it downloads without JavaScript and there is no
+      // blob to hold or revoke.
+      download
+      className="border border-rule px-3 py-1.5 font-ui text-sm text-ink transition-colors hover:text-rubric motion-reduce:transition-none"
+      data-testid="export-tei"
+    >
+      Export TEI
+      <span className="sr-only">
+        {" "}
+        — downloads this collation as a TEI P5 XML file
+      </span>
+    </a>
+  );
+}
+
 /**
  * The reading surface.
  *
- * Renders a finished `ComparisonResult`; it never computes a diff. Phase 1
- * implements synoptic and unified modes with ordinary scrolling. Virtualization
- * and the anchor-linked `SyncScrollContainer` are phase 4 — note that scroll
- * sync must be anchored to aligned block pairs, never pixel- or
- * percentage-linked, because the two panes hold different amounts of text.
+ * Renders a finished `ComparisonResult`; it never computes a diff. Synoptic
+ * mode is a single virtualized list of three-cell rows, so corresponding
+ * blocks share a grid row and cannot drift apart — see
+ * `VirtualizedSynopticView` for why that replaced anchor-linked scroll sync.
  */
 export function DiffViewer({
   comparison,
@@ -157,6 +177,7 @@ export function DiffViewer({
           />
           <MovesToggle enabled={movesEnabled} onChange={changeMovesEnabled} />
           <ViewModeToggle mode={mode} onChange={changeMode} />
+          <ExportLink comparisonId={comparison.comparison_id} />
         </div>
       </div>
 

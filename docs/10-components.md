@@ -28,9 +28,10 @@ The client does not compute a diff. It uploads two witnesses, asks the backend f
    │  └─ DiffBlockRow                  Manuscript B pane
    │     ├─ ChangeGutter
    │     └─ TokenSpan
-   └─ DiffBlockRow                     when ViewMode is UNIFIED
-      ├─ ChangeGutter
-      └─ TokenSpan
+   └─ VirtualizedUnifiedView           when ViewMode is UNIFIED
+      └─ DiffBlockRow
+         ├─ ChangeGutter
+         └─ TokenSpan
 ```
 
 The gutter shows block ordinals from `a_index` and `b_index`. These are not rendered visual line numbers. Prose reflows with viewport width, so visual line numbers are not stable anchors.
@@ -39,7 +40,7 @@ The gutter shows block ordinals from `a_index` and `b_index`. These are not rend
 
 | Convention | Requirement |
 |---|---|
-| Client boundary | `ManuscriptUploader`, `DiffViewer`, `VirtualizedSynopticView`, `DiffSummaryBar`, `DiffBlockRow`, `TokenSpan`, `ChangeGutter`, `ChangeNavigator`, `LoadingProgress`, `ViewModeToggle`, `BlockConnector`, and `EmptyState` are client components because they read browser input, URL state, focus state, measured layout, or scroll position. |
+| Client boundary | `ManuscriptUploader`, `DiffViewer`, `VirtualizedSynopticView`, `VirtualizedUnifiedView`, `DiffSummaryBar`, `DiffBlockRow`, `TokenSpan`, `ChangeGutter`, `ChangeNavigator`, `LoadingProgress`, `ViewModeToggle`, `BlockConnector`, and `EmptyState` are client components because they read browser input, URL state, focus state, measured layout, or scroll position. |
 | Naming | Public props use `comparisonId`, `comparison`, `blocks`, `metrics`, `options`, `a`, `b`, `a_index`, and `b_index` only where those names mirror the contract. UI text always says Manuscript A and Manuscript B, never positional pane labels. |
 | Memoization | `TokenSpan` is memoized by `text`, `status`, and announcement mode. `DiffBlockRow` is memoized by `DiffBlock.id`, pane, expansion state, and focus state. Handlers passed into virtualized rows are stable callbacks. |
 | DOM discipline | A 100,000-word manuscript can produce about 120,000 word tokens per witness before payload run-coalescing. A payload `Token` is a contiguous run, not necessarily one word. Rows render only the current virtual window and must never compute metrics by counting `Token` array entries. |
@@ -187,7 +188,11 @@ Correspondent row heights are maintained by measuring both rendered row elements
 
 ### Unified rendering
 
-Unified view renders one column at `--measure-prose`. It uses `DiffBlock.tokens` as the authoritative inline stream. `TokenStatus.DELETION` tokens are shown through rather than removed, so the prior reading remains visible. `TokenStatus.INSERTION` tokens remain inline at their returned location. `ChangeGutter` still shows the block ordinal; when both `a_index` and `b_index` exist, it exposes both in the label.
+Unified view renders one column at `--measure-prose` inside `VirtualizedUnifiedView`. It uses `DiffBlock.tokens` as the authoritative inline stream. `TokenStatus.DELETION` tokens are shown through rather than removed, so the prior reading remains visible. `TokenStatus.INSERTION` tokens remain inline at their returned location. `ChangeGutter` still shows the block ordinal; when both `a_index` and `b_index` exist, it exposes both in the label.
+
+Unified is virtualized on the same terms as synoptic. It was not, originally, and rendered one row per block: acceptable while the client only ever held the server's first window, and not once it began loading the whole comparison. Measured at 300 blocks, it mounted 300 rows against the budget of about 120 in [Performance and scale](./11-performance-and-scale.md), scaling with the manuscript and bounded by nothing.
+
+Both reading surfaces therefore expose the same `BlockListHandle`, which is what allows navigation to scroll to a block without knowing which view is mounted.
 
 ### Accessibility
 
@@ -212,16 +217,19 @@ Unified view renders one column at `--measure-prose`. It uses `DiffBlock.tokens`
 
 ### Props and handle
 
+Both reading surfaces implement the shared `BlockListHandle` from `components/blockList.ts`, so navigation can scroll to a block without knowing which view is mounted.
+
 ```ts
-export interface SynopticHandle {
+export interface BlockListHandle {
   scrollToBlock: (index: number) => void;
 }
 
-// Props
+// Props, identical for VirtualizedSynopticView and VirtualizedUnifiedView
 {
   blocks: DiffBlock[];
   showStructuralMarkers: boolean;
   height?: string;         // default "70vh"
+  renderAll?: boolean;     // suspend virtualization; see doc 09 on printing
 }
 ```
 
@@ -231,17 +239,24 @@ Navigation must go through `scrollToBlock` rather than querying the DOM: a row o
 
 | Concern | Requirement |
 |---|---|
-| Row identity | Rows are keyed by `DiffBlock.id`, never by array position. This is load-bearing only once windowed loading is wired in, where index keying would recycle a mounted row into a different block. |
+| Row identity | Rows are keyed by `DiffBlock.id`, never by array position, so a window replacement cannot recycle a mounted row into a different block. |
 | Height | Row height is the taller of the two cells, so the two witnesses start on the same baseline. |
 | Held-open gaps | `INSERTED` and `DELETED` render an empty cell on the absent side rather than collapsing the row, preserving the reading line across the grid. |
 | Overscan | Expressed in pixels through `increaseViewportBy`, because that is the unit Virtuoso offers and prose block heights are not known in advance. The default is 1200px, roughly a viewport of prose above and below. |
 | Pane headings | Rendered as real headings outside the scroller, so they remain visible while rows move beneath them and are reachable by assistive technology rather than read as decorative column labels. |
 | Reduced motion | `scrollToBlock` uses `behavior: "auto"`, so jumps are always immediate and `prefers-reduced-motion` needs no special case. |
 | Single-column fallback | Below the `md` breakpoint the grid collapses to one column and the connector is hidden; there is no viewport at which two prose columns are legible on a phone. |
+| Printing | `renderAll` mounts every row. Only for printing: leaving it on would defeat the point of the component. |
 
 ### Design tokens consumed
 
 `VirtualizedSynopticView` consumes `--color-rule`, `--color-vellum`, `--color-moved`, `--color-moved-underlay`, `--font-ui`, and `--leading-manuscript`.
+
+## VirtualizedUnifiedView
+
+`VirtualizedUnifiedView` renders unified view: one `react-virtuoso` list of `DiffBlockRow` in `unified` mode, at `--measure-prose`. It shares `BlockListHandle`, the overscan constant, and the `renderAll` print behaviour with `VirtualizedSynopticView`; only the row renderer differs.
+
+Both views must stay within the mounted-row budget in [Performance and scale](./11-performance-and-scale.md) at any manuscript length. That is a property of the component, not of the payload: the client loads every block of a windowed comparison, so nothing upstream limits how many rows a naive view would mount.
 
 ## LoadingProgress
 

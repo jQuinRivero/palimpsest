@@ -143,15 +143,17 @@ Storage tests exercise the `SessionStore` contract and the SQLite implementation
 
 ### Frontend tests
 
-Component tests cover every component named in [Components](./10-components.md): `ManuscriptUploader`, `DiffViewer`, `VirtualizedSynopticView`, `DiffSummaryBar`, `DiffBlockRow`, `TokenSpan`, `ChangeGutter`, `ChangeNavigator`, `LoadingProgress`, `BlockConnector`, and `EmptyState`.
+Component tests cover every component named in [Components](./10-components.md): `ManuscriptUploader`, `DiffViewer`, `VirtualizedSynopticView`, `VirtualizedUnifiedView`, `DiffSummaryBar`, `DiffBlockRow`, `TokenSpan`, `ChangeGutter`, `ChangeNavigator`, `LoadingProgress`, `BlockConnector`, and `EmptyState`.
 
 Tests must exercise the real components. A fixture that serves hand-written HTML and reimplements the behaviour under test asserts only that the test file is self-consistent, and will pass with the component broken or deleted. Where a route fetches server-side and cannot be intercepted from the browser, drive the real API rather than substituting a facsimile of the page. A structural-rendering fixture doing exactly this was removed for that reason.
 
 The corresponding check is mutation, not coverage: change a rendered glyph or label and confirm the test fails. Coverage cannot distinguish a test that exercises a component from one that merely renders beside it.
 
-`VirtualizedSynopticView` gets special attention, because virtualization breaks the assumption that everything in the payload is in the DOM. Tests should cover a jump to a block that has never been mounted, `MOVED`, `SPLIT`, and `MERGED` relationships, unequal cell heights within a row, and the single-column collapse below the `md` breakpoint.
+Both reading views get special attention, because virtualization breaks the assumption that everything in the payload is in the DOM. Tests should cover a jump to a block that has never been mounted, `MOVED`, `SPLIT`, and `MERGED` relationships, unequal cell heights within a row, and the single-column collapse below the `md` breakpoint.
 
 Virtualization tests use a large `ComparisonResult` payload and assert that visible rows render, offscreen rows do not explode DOM size, anchor jumps remain stable, and accessible names remain present when rows mount and unmount.
+
+Two assertions belong together and must be made against a manuscript longer than the mounted-row budget, because each is the other's failure mode: on screen the mounted rows stay bounded, and under emulated print media every block is present. Testing only the first invites a view that never prints the whole text; testing only the second invites a view that mounts the whole manuscript.
 
 Windowing is tested end to end against a lowered `PALIMPSEST_COMPARISON_WINDOW_BLOCK_THRESHOLD`, so a few hundred blocks exercise the path production reaches at a few thousand. This is the same technique as testing pagination with a page size of two: what is under test is the client's response to `truncated: true`, which does not depend on the absolute size. The first attempt used a genuinely oversized comparison and made the whole suite flaky, because seconds of CPU-bound diffing in the API process starved every test running beside it, failing a different unrelated test on each run.
 

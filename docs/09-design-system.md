@@ -247,3 +247,11 @@ When `prefers-reduced-motion: reduce` is active, transitions are removed and scr
 Researchers will print or PDF comparisons, so print output is part of the design system.
 
 The print stylesheet forces unified view because side-by-side panes waste paper and often become unreadable. Underlays convert to patterns that survive greyscale: insertions use a light underline pattern, deletions retain the hairline strike, and moved-block relationships use labelled gutter markers rather than colour. The change gutter remains visible with block ordinals and `BlockStatus` markers, because those ordinals are the stable citation anchors on paper as well as on screen.
+
+### Printing must not print a window
+
+Both reading surfaces are virtualized, so only rows near the viewport exist in the DOM. Printing in that state puts a fraction of the collation on paper — measured at 42 of 300 blocks from synoptic view — with nothing on the page to indicate anything is missing. That is the same failure as rendering a truncated comparison as a whole one, except the artifact leaves the building and is the kind of thing that gets cited.
+
+Virtualization is therefore suspended for the duration of a print: `usePrintAll` watches `beforeprint`, `afterprint`, and the `print` media query, and both views take a `renderAll` prop that renders every row.
+
+The state update must be flushed synchronously. React batches updates, and the browser snapshots the document as soon as the `beforeprint` handler returns, so an ordinary update lands after the snapshot and prints exactly the fragment it was meant to prevent. The media query is watched as well as the event, which makes the behaviour testable under emulated print media and covers browsers that switch media without firing the event.

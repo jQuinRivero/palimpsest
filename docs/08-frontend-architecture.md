@@ -31,6 +31,7 @@ frontend/
     ManuscriptUploader.tsx     # Upload form and witness metadata display.
     DiffViewer.tsx             # Top-level interactive viewer composition; contains ViewModeToggle.
     VirtualizedSynopticView.tsx # Virtualized synoptic grid; supersedes SyncScrollContainer.
+    VirtualizedUnifiedView.tsx # Virtualized single-column reading.
     DiffSummaryBar.tsx         # Metrics and navigation summary.
     DiffBlockRow.tsx           # One rendered `DiffBlock`.
     TokenSpan.tsx              # One rendered `Token`.
@@ -45,6 +46,7 @@ frontend/
     hooks/
       useBlockNavigation.ts    # Active block and next/previous change navigation.
       useWindowedBlocks.ts     # Loads the remaining windows of a truncated comparison.
+      usePrintAll.ts           # Suspends virtualization while the browser prints.
   styles/
     globals.css                # Tailwind v4 import, `@theme` tokens, base document styles.
 ```
@@ -96,11 +98,12 @@ These components must be `"use client"`:
 | Component or hook | Why it is client-side |
 |---|---|
 | `DiffViewer` | Owns interactive view state, keyboard navigation, active block, and composition of the virtualized view. |
-| `VirtualizedSynopticView` | Runs `react-virtuoso`, which measures rendered rows in the browser. |
+| `VirtualizedSynopticView` and `VirtualizedUnifiedView` | Run `react-virtuoso`, which measures rendered rows in the browser. |
 | `ViewModeToggle` | Mutates URL state in response to user interaction. |
 | `DiffBlockRow`, when virtualized | Runs inside `react-virtuoso` and participates in measured, variable-height rendering. |
 | `TokenSpan`, when announcing inline changes | May carry interactive focus and screen-reader-only labels. |
 | `ChangeNavigator` and `useBlockNavigation` | Handle keyboard events, focus management, live announcements, and URL replacement for the active block. |
+| `usePrintAll` | Listens for `beforeprint` and the `print` media query, which exist only in a browser. |
 
 Very large payloads use the windowed path defined in [Performance and scale](./11-performance-and-scale.md): `GET /api/v1/comparisons/{comparison_id}/blocks?offset=&limit=`. The switch is driven by `truncated: true` and `total_blocks`, not by ad hoc browser heuristics.
 
@@ -169,10 +172,11 @@ The reason is structural: the `ComparisonResult` payload is immutable once fetch
 | View mode | The viewer route, backed by `?view=synoptic\|unified`, resolved server-side so the first paint is already the requested mode. |
 | Active block | `useBlockNavigation`, backed by `?block=<index>`, seeded from the server for the same reason. |
 | Move connector visibility | `DiffViewer`, backed by `?moves=on\|off`. |
-| Scroll position | `react-virtuoso` inside `VirtualizedSynopticView`; no application-level scroll state exists. |
+| Scroll position | `react-virtuoso` inside whichever reading view is mounted; no application-level scroll state exists. |
 | Loaded blocks | `useWindowedBlocks`, which starts from the server's first window and grows to `total_blocks`. |
+| Printing | `usePrintAll`, derived from `beforeprint`/`afterprint` and the `print` media query. |
 
-`useBlockNavigation` owns next/previous change traversal, focus, live announcements, and active block updates. `useWindowedBlocks` owns loading the remaining windows of a truncated comparison. Those are the only two custom hooks in the application; anything beyond them should be justified by doc 10 rather than added as a hidden architecture choice.
+`useBlockNavigation` owns next/previous change traversal, focus, live announcements, and active block updates. `useWindowedBlocks` owns loading the remaining windows of a truncated comparison. `usePrintAll` owns suspending virtualization for a print. Those are the only three custom hooks in the application; anything beyond them should be justified by doc 10 rather than added as a hidden architecture choice.
 
 ## Scroll alignment
 

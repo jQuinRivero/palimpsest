@@ -110,9 +110,10 @@ The frontend uses `react-virtuoso` 4.18.11 because the comparison view has varia
 
 | Rendering budget | Requirement |
 |---|---|
-| Rendered rows | Keep mounted rows under 120, including overscan. A row carries both witnesses, so this is 120 rows and not 120 per witness. |
+| Rendered rows | Keep mounted rows under 120, including overscan, in **both** reading views. A synoptic row carries both witnesses, so this is 120 rows and not 120 per witness. This is a property of the view: the client loads every block of a windowed comparison, so nothing upstream caps how many rows a naive view would mount. |
+| Printing | The one exception. Both views suspend virtualization for the duration of a print, because a virtualized list puts a fraction of the collation on paper with nothing on the page to say so. See [Design system](./09-design-system.md). |
 | DOM nodes per rendered block | Target fewer than 250 nodes for a changed block and fewer than 40 nodes for an unchanged block by coalescing unchanged token runs. |
-| Overscan | Default to 8 blocks above and below the viewport; increase temporarily during keyboard navigation or scroll synchronization jumps. |
+| Overscan | Expressed in pixels through `increaseViewportBy`, because that is the unit `react-virtuoso` takes and prose block heights are not known in advance. The default is 1200px, roughly a viewport of prose above and below. |
 | `TokenSpan` memoization | Memoize by `text`, `status`, and announcement mode. Do not re-render token spans when only scroll position changes. |
 | Connectors | Draw `BlockConnector` only for measured visible endpoints. |
 

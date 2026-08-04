@@ -1,7 +1,7 @@
 # palimpsest
 
 ![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue)
-![Status: specification only](https://img.shields.io/badge/status-specification%20only-lightgrey)
+![Status: v1 complete](https://img.shields.io/badge/status-v1%20complete-green)
 
 An open-source literary-criticism web app for reading how one witness of a text changes into another.
 
@@ -28,17 +28,18 @@ Code-oriented diff tools are line-oriented, monospace, dense, and red/green by d
 
 ## Status
 
-**Phases 1 and 2 complete.** All five parsers ship, and a full pipeline runs end to end: upload two witnesses in any supported format, get a real word-level diff, read it side by side or unified in the browser.
+**v1 is complete.** Every capability the specification describes for v1 is built, tested, and running: upload two witnesses in any supported format, get a structurally aware word-level diff, and read it side by side or unified in the browser.
 
 Working today:
 
 - **Ingestion**: `BaseDocumentParser` interface, parser registry with three-signal format detection, and parsers for `.txt`, `.md`, `.docx`, `.pdf` — the last with running-head and folio-number detection, and honest `OCR_REQUIRED` refusal of scanned PDFs
 - **Normalization**: Unicode NFC, ligature folding, soft line-break reflow with verse exemption, and a lexicon-backed dehyphenation policy that distinguishes hard hyphens from typesetter hyphens
+- **Alignment**: exact-match anchoring, gap-confined fuzzy search, deterministic greedy assignment, LIS-based move detection, and split/merge detection via the concatenation test — so re-paragraphing a chapter reports a `SPLIT` with **zero** word edits rather than a rewrite
 - **Diff engine**: word-level diffing via `diff-match-patch` line-mode remapping, all three token streams, and full metrics
-- **API and storage**: REST API with an RFC 9457 error taxonomy, SQLite session store with TTL expiry
-- **Reading**: synoptic and unified views in the manuscript design system
+- **API and storage**: REST API with an RFC 9457 error taxonomy, a `202` accepted-and-poll path for large manuscripts, windowed block fetching, rate limiting, and a SQLite session store with a scheduled TTL sweeper
+- **Reading**: synoptic and unified views in the manuscript design system, virtualized so a 100k-word witness scrolls without jank, with keyboard change navigation, citable `?block=` deep links, and a print stylesheet that survives greyscale
 
-Not yet built, in rough order: the alignment layer that detects moved, split and merged passages; virtualization and anchor-linked synchronized scrolling; and the windowed and asynchronous paths for very large manuscripts. See the [roadmap](docs/14-roadmap.md).
+Not built, and deliberately so: OCR (the seam exists, no engine ships), multi-witness collation, TEI export, and independently scrolling panes. See the [roadmap](docs/14-roadmap.md).
 
 The [specification](docs/README.md) remains normative. Where the code and the specification disagree, that is a defect in one of them.
 

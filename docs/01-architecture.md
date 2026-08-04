@@ -33,7 +33,7 @@ backend/app/
   api/v1/{documents,comparisons,health,capabilities}.py
   services/ingestion/{base,registry,plaintext,markdown,docx,pdf_plumber,pdf_pypdf,normalize}.py
   services/diffing/{engine,alignment,tokenizer,metrics,moves}.py
-  services/formatting/{payload,unified,synoptic}.py
+  services/formatting/{payload,tei}.py
   storage/{store,sqlite_store,schema.sql,sweeper}.py
   models/{document,diff,api}.py
   config.py  main.py
@@ -58,9 +58,8 @@ backend/app/
 | `backend/app/services/diffing/tokenizer.py` | `Granularity`-aware tokenization for `WORD` and `CHARACTER`. |
 | `backend/app/services/diffing/metrics.py` | `BlockMetrics` and `DiffMetrics` computation. |
 | `backend/app/services/diffing/moves.py` | `MOVED`, `SPLIT`, and `MERGED` detection. |
-| `backend/app/services/formatting/payload.py` | Serialization of a diff-domain result into `ComparisonResult`, `BlockPage`, and related API payloads. |
-| `backend/app/services/formatting/unified.py` | Construction of unified token streams and block ordering for `UNIFIED` rendering. |
-| `backend/app/services/formatting/synoptic.py` | Construction of Manuscript A and Manuscript B token panes for `SYNOPTIC` rendering. |
+| `backend/app/services/formatting/payload.py` | Serialization of a diff-domain result into `ComparisonResult`, `BlockPage`, and related API payloads. All three token streams — unified, Manuscript A, and Manuscript B — are produced here rather than in separate modules, because they are apportioned from one diff and splitting them would invite the group's tokens being diffed twice. |
+| `backend/app/services/formatting/tei.py` | TEI P5 export using the parallel segmentation method; see [ADR-0006](./adr/0006-tei-parallel-segmentation-export.md). |
 | `backend/app/storage/store.py` | `SessionStore` protocol for documents, comparisons, expiry, and pagination. |
 | `backend/app/storage/sqlite_store.py` | SQLite implementation of `SessionStore`. |
 | `backend/app/storage/schema.sql` | `documents`, `comparisons`, and `schema_migrations` schema plus required pragmas. |
@@ -141,10 +140,10 @@ The diffing layer treats `Block.text`, `Block.kind`, `Block.index`, and normaliz
 
 | Concern | Specification |
 |---|---|
-| Responsible for | Wire payload shape, `ComparisonResult` serialization, `BlockPage` pagination, unified token stream construction, Manuscript A and Manuscript B panes, and truncation metadata. |
+| Responsible for | Wire payload shape, `ComparisonResult` serialization, `BlockPage` pagination, unified token stream construction, Manuscript A and Manuscript B panes, truncation metadata, and export serialization. |
 | Must not know about | Source format parsing, magic bytes, parser fallback behavior, or the internals of the diff library. |
 | Input type | Diff-domain blocks and metrics from `diffing`, plus `DocumentSummary` values and `DiffOptions`. |
-| Output type | `ComparisonResult` or `BlockPage`. |
+| Output type | `ComparisonResult`, `BlockPage`, or a TEI P5 document. |
 
 `formatting` owns the API payload shape so the diff engine never thinks about the UI. The client receives `tokens`, `a_tokens`, and `b_tokens` already prepared for `UNIFIED` and `SYNOPTIC` rendering.
 

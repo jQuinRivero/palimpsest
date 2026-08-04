@@ -24,6 +24,7 @@ Code-oriented diff tools are line-oriented, monospace, dense, and red/green by d
 - Word-level tokens with insertion, deletion, and unchanged status.
 - Block alignment with moved, split, and merged passage detection.
 - Change metrics for similarity, churn, insertions, deletions, and structural changes.
+- TEI P5 export using parallel segmentation, so a collation can leave the tool.
 - Shareable expiring comparison URLs backed by a TTL session cache.
 
 ## Status
@@ -38,8 +39,9 @@ Working today:
 - **Diff engine**: word-level diffing via `diff-match-patch` line-mode remapping, all three token streams, and full metrics
 - **API and storage**: REST API with an RFC 9457 error taxonomy, a `202` accepted-and-poll path for large manuscripts, windowed block fetching, rate limiting, and a SQLite session store with a scheduled TTL sweeper
 - **Reading**: synoptic and unified views in the manuscript design system, virtualized so a 100k-word witness scrolls without jank, with keyboard change navigation, citable `?block=` deep links, and a print stylesheet that survives greyscale
+- **Export**: TEI P5 using the parallel segmentation method, with moves, splits and merges recorded as `<linkGrp>` in the back matter — both witnesses reconstruct from the file word for word
 
-Not built, and deliberately so: OCR (the seam exists, no engine ships), multi-witness collation, TEI export, and independently scrolling panes. See the [roadmap](docs/14-roadmap.md).
+Not built, and deliberately so: OCR (the seam exists, no engine ships), multi-witness collation, annotation, and independently scrolling panes. See the [roadmap](docs/14-roadmap.md).
 
 The [specification](docs/README.md) remains normative. Where the code and the specification disagree, that is a defect in one of them.
 

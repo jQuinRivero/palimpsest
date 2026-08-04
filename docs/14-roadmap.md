@@ -36,13 +36,15 @@ OCR forces long-running work, so comparison and ingestion need a job queue rathe
 
 ### Annotation and export
 
-**Motivation.** Scholars do not only read differences; they explain them. Notes anchored to changed blocks and exports to scholarly formats make a comparison usable outside the web session.
+**Delivered.** TEI P5 export ships: `GET /api/v1/comparisons/{id}/export/tei` returns the collation using the parallel segmentation method, with structural relations as `<linkGrp>` in the back matter. See [ADR-0006](./adr/0006-tei-parallel-segmentation-export.md) and [API reference](./06-api-reference.md).
 
-**What it requires.** Margin notes should anchor to `Block` and character offsets. `Block.char_start` and `Block.char_end` already provide the core coordinate system. The annotation model must survive re-rendering, pagination changes, and view-mode changes.
+**Motivation.** Scholars do not only read differences; they explain them. Notes anchored to changed blocks make a comparison usable as scholarship rather than only as a reading.
 
-TEI XML export is the most valuable integration for the target audience because TEI is the standard interchange format for digital scholarly editions. PDF and HTML exports are also useful as reading artifacts, but TEI is the scholarly data format.
+**What it requires.** Margin notes should anchor to `Block` and character offsets. `Block.char_start` and `Block.char_end` already provide the core coordinate system. The annotation model must survive re-rendering, pagination changes, and view-mode changes. Annotations would also extend the TEI export, where `<note>` anchored to a block `@xml:id` is the natural encoding — which is part of why every exported block already carries one.
 
-**Existing seam.** `Block.id`, `Block.char_start`, `Block.char_end`, `DiffBlock.a_block_id`, `DiffBlock.b_block_id`, `group_id`, and server-side formatting in `backend/app/services/formatting/{payload,unified,synoptic}.py`.
+PDF and HTML exports remain open. They are reading artifacts rather than data artifacts, so each belongs at its own path under `/export/` with its own fidelity obligations; a single endpoint switching on format would let a lossy rendering inherit the guarantees of a lossless one.
+
+**Existing seam.** `Block.id`, `Block.char_start`, `Block.char_end`, `DiffBlock.a_block_id`, `DiffBlock.b_block_id`, `group_id`, and `backend/app/services/formatting/{payload,tei}.py`.
 
 ### Persistence and accounts
 

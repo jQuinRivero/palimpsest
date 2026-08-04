@@ -18,10 +18,10 @@ export default async function ComparisonPage({
   searchParams,
 }: {
   params: Promise<{ comparisonId: string }>;
-  searchParams: Promise<{ view?: string }>;
+  searchParams: Promise<{ view?: string; block?: string }>;
 }) {
   const { comparisonId } = await params;
-  const { view } = await searchParams;
+  const { view, block } = await searchParams;
 
   let comparison;
   try {
@@ -36,10 +36,17 @@ export default async function ComparisonPage({
   }
 
   const mode: ViewMode = view === "unified" ? "unified" : "synoptic";
+  const requested = block !== undefined && /^\d+$/.test(block) ? Number(block) : null;
+  const initialBlockIndex =
+    requested !== null && requested < comparison.blocks.length ? requested : null;
 
   return (
     <main className="mx-auto max-w-7xl px-6 py-10">
-      <DiffViewer comparison={comparison} initialMode={mode} />
+      <DiffViewer
+        comparison={comparison}
+        initialMode={mode}
+        initialBlockIndex={initialBlockIndex}
+      />
     </main>
   );
 }

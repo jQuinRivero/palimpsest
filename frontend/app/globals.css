@@ -81,3 +81,109 @@ body {
     scroll-behavior: auto !important;
   }
 }
+
+@media print {
+  @page {
+    margin: 0.75in;
+  }
+
+  *,
+  *::before,
+  *::after {
+    background-color: transparent !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  body {
+    background: #fff !important;
+    color: #111 !important;
+  }
+
+  button,
+  [role="button"],
+  [data-testid="change-navigator"],
+  [data-testid="moves-toggle"],
+  [aria-label="Reading mode"],
+  [data-testid^="block-connector-"] {
+    display: none !important;
+  }
+
+  [data-testid="diff-viewer"] {
+    color: #111 !important;
+    font-size: 11pt;
+  }
+
+  [data-testid="diff-viewer"] .grid,
+  [data-testid="diff-viewer"] section[aria-label="Unified reading"] {
+    display: block !important;
+    max-inline-size: var(--measure-prose) !important;
+  }
+
+  [data-testid^="diff-block-row-"] {
+    break-inside: avoid;
+    border-color: #444 !important;
+    color: #111 !important;
+    margin-block: 0.15in;
+    padding-block: 0.05in;
+  }
+
+  [data-testid="change-gutter"],
+  [data-testid^="gutter-marker-"] {
+    color: #111 !important;
+  }
+
+  [data-testid="gutter-marker-INSERTED"]::after {
+    content: " ins";
+    font-family: var(--font-mono);
+  }
+
+  [data-testid="gutter-marker-DELETED"]::after {
+    content: " del";
+    font-family: var(--font-mono);
+  }
+
+  [data-testid="gutter-marker-MOVED"]::after {
+    content: " moved";
+    font-family: var(--font-mono);
+  }
+
+  [data-testid="gutter-marker-SPLIT"]::after {
+    content: " split";
+    font-family: var(--font-mono);
+  }
+
+  [data-testid="gutter-marker-MERGED"]::after {
+    content: " merged";
+    font-family: var(--font-mono);
+  }
+
+  [data-testid="token-INSERTION"] {
+    background-image: repeating-linear-gradient(
+      135deg,
+      transparent 0,
+      transparent 0.12em,
+      #d0d0d0 0.12em,
+      #d0d0d0 0.2em
+    ) !important;
+    border-bottom: 1px solid #111;
+    color: #111 !important;
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.18em;
+  }
+
+  [data-testid="token-DELETION"] {
+    background-image: repeating-linear-gradient(
+      90deg,
+      transparent 0,
+      transparent 0.18em,
+      #e0e0e0 0.18em,
+      #e0e0e0 0.28em
+    ) !important;
+    border: 1px dotted #444;
+    color: #111 !important;
+    text-decoration: line-through;
+    text-decoration-thickness: 1px;
+  }
+}

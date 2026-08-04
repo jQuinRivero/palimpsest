@@ -38,6 +38,22 @@ let comparisonId: string;
 let totalBlocks: number;
 let firstWindow: number;
 
+/**
+ * Slows the window fetches so the loading state is observable.
+ *
+ * Without this the assertions race the network: a three-hundred-block fixture
+ * can finish loading before the first expectation runs, and the test then
+ * fails against the completed state for reasons that have nothing to do with
+ * the behaviour under test. Delaying the continuation is deterministic, where
+ * asserting quickly enough is a bet on the machine.
+ */
+async function withSlowWindowLoading(page: import("@playwright/test").Page) {
+  await page.route("**/comparisons/*/blocks*", async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    await route.continue();
+  });
+}
+
 test.beforeAll(async ({ request }) => {
   const upload = async (text: string, name: string) => {
     const response = await request.post(`${API}/api/v1/documents`, {
@@ -74,11 +90,13 @@ test.beforeAll(async ({ request }) => {
 });
 
 test("a truncated comparison says so, then loads the whole collation", async ({ page }) => {
+  await withSlowWindowLoading(page);
   await page.goto(`/c/${comparisonId}`);
 
   const status = page.getByTestId("block-loading-status");
 
   // The reader must never be shown a window that looks like the whole text.
+  await expect(status).toHaveAttribute("data-state", "loading");
   await expect(status).toContainText(`of ${totalBlocks.toLocaleString()} blocks`);
 
   await expect(status).toHaveAttribute("data-state", "complete");
@@ -88,6 +106,7 @@ test("a truncated comparison says so, then loads the whole collation", async ({ 
 test("the change count is marked provisional until everything has arrived", async ({
   page,
 }) => {
+  await withSlowWindowLoading(page);
   await page.goto(`/c/${comparisonId}`);
 
   const position = page.getByTestId("change-position");
@@ -106,9 +125,14 @@ test("a deep link past the first window survives and lands", async ({ page }) =>
   const target = totalBlocks - 5;
   expect(target).toBeGreaterThan(firstWindow);
 
+  await withSlowWindowLoading(page);
   await page.goto(`/c/${comparisonId}?block=${target}`);
 
   // The parameter must still be there while the target is unloaded.
+  await expect(page.getByTestId("block-loading-status")).toHaveAttribute(
+    "data-state",
+    "loading",
+  );
   await expect(page).toHaveURL(new RegExp(`block=${target}`));
 
   await expect(page.getByTestId("block-loading-status")).toHaveAttribute(

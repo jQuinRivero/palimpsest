@@ -35,7 +35,7 @@
   "blocks": [
     {
       "id": "dbk_0001",
-      "status": "MODIFIED",
+      "status": "SPLIT",
       "kind": "PARAGRAPH",
       "a_index": 0,
       "b_index": 0,
@@ -45,79 +45,76 @@
         {
           "text": "It was the best of times, it was the worst of times. ",
           "status": "UNCHANGED"
-        },
-        {
-          "text": "It was the spring of hope, it was the winter of despair.",
-          "status": "DELETION"
         }
       ],
       "a_tokens": [
         {
           "text": "It was the best of times, it was the worst of times. ",
           "status": "UNCHANGED"
-        },
-        {
-          "text": "It was the spring of hope, it was the winter of despair.",
-          "status": "DELETION"
         }
       ],
       "b_tokens": [
         {
-          "text": "It was the best of times, it was the worst of times.",
+          "text": "It was the best of times, it was the worst of times. ",
           "status": "UNCHANGED"
         }
       ],
       "metrics": {
-        "similarity": 0.646,
-        "edit_count": 12,
+        "similarity": 1.0,
+        "edit_count": 0,
         "insertions": 0,
-        "deletions": 12,
-        "churn": 0.3333
+        "deletions": 0,
+        "churn": 0.0
       },
       "move_distance": null,
-      "group_id": null
+      "group_id": "grp_0001"
     },
     {
       "id": "dbk_0002",
-      "status": "INSERTED",
+      "status": "SPLIT",
       "kind": "PARAGRAPH",
-      "a_index": null,
+      "a_index": 0,
       "b_index": 1,
-      "a_block_id": null,
+      "a_block_id": "blk_a_0000",
       "b_block_id": "blk_b_0001",
       "tokens": [
         {
           "text": "It was the spring of hope, it was the winter of despair.",
-          "status": "INSERTION"
+          "status": "UNCHANGED"
         }
       ],
-      "a_tokens": [],
+      "a_tokens": [
+        {
+          "text": "It was the spring of hope, it was the winter of despair.",
+          "status": "UNCHANGED"
+        }
+      ],
       "b_tokens": [
         {
           "text": "It was the spring of hope, it was the winter of despair.",
-          "status": "INSERTION"
+          "status": "UNCHANGED"
         }
       ],
       "metrics": {
-        "similarity": 0.0,
-        "edit_count": 12,
-        "insertions": 12,
+        "similarity": 1.0,
+        "edit_count": 0,
+        "insertions": 0,
         "deletions": 0,
-        "churn": 1.0
+        "churn": 0.0
       },
       "move_distance": null,
-      "group_id": null
+      "group_id": "grp_0001"
     }
   ],
   "metrics": {
-    "similarity": 0.5,
-    "edit_count": 24,
-    "insertions": 12,
-    "deletions": 12,
-    "unchanged_tokens": 12,
-    "churn": 0.5,
+    "similarity": 1.0,
+    "edit_count": 0,
+    "insertions": 0,
+    "deletions": 0,
+    "unchanged_tokens": 24,
+    "churn": 0.0,
     "blocks_moved": 0,
-    "blocks_split": 0,
+    "blocks_split": 2,
     "blocks_merged": 0,
     "a_word_count": 24,
     "b_word_count": 24

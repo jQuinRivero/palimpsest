@@ -35,20 +35,47 @@
   "blocks": [
     {
       "id": "dbk_0001",
-      "status": "MODIFIED",
+      "status": "INSERTED",
       "kind": "PARAGRAPH",
-      "a_index": 0,
+      "a_index": null,
       "b_index": 0,
-      "a_block_id": "blk_a_0000",
+      "a_block_id": null,
       "b_block_id": "blk_b_0000",
       "tokens": [
         {
-          "text": "It is a truth universally acknowledged, that a single man in possession of a good fortune, must be in want of a wife. ",
-          "status": "DELETION"
-        },
+          "text": "The Lord is my shepherd; I shall not want. He maketh me to lie down in green pastures: he leadeth me beside the still waters.",
+          "status": "INSERTION"
+        }
+      ],
+      "a_tokens": [],
+      "b_tokens": [
         {
           "text": "The Lord is my shepherd; I shall not want. He maketh me to lie down in green pastures: he leadeth me beside the still waters.",
           "status": "INSERTION"
+        }
+      ],
+      "metrics": {
+        "similarity": 0.0,
+        "edit_count": 25,
+        "insertions": 25,
+        "deletions": 0,
+        "churn": 1.0
+      },
+      "move_distance": null,
+      "group_id": null
+    },
+    {
+      "id": "dbk_0002",
+      "status": "DELETED",
+      "kind": "PARAGRAPH",
+      "a_index": 0,
+      "b_index": null,
+      "a_block_id": "blk_a_0000",
+      "b_block_id": null,
+      "tokens": [
+        {
+          "text": "It is a truth universally acknowledged, that a single man in possession of a good fortune, must be in want of a wife.",
+          "status": "DELETION"
         }
       ],
       "a_tokens": [
@@ -57,16 +84,11 @@
           "status": "DELETION"
         }
       ],
-      "b_tokens": [
-        {
-          "text": "The Lord is my shepherd; I shall not want. He maketh me to lie down in green pastures: he leadeth me beside the still waters.",
-          "status": "INSERTION"
-        }
-      ],
+      "b_tokens": [],
       "metrics": {
-        "similarity": 0.4298,
-        "edit_count": 48,
-        "insertions": 25,
+        "similarity": 0.0,
+        "edit_count": 23,
+        "insertions": 0,
         "deletions": 23,
         "churn": 1.0
       },
@@ -97,5 +119,5 @@
     "normalize_whitespace": true
   },
   "truncated": false,
-  "total_blocks": 1
+  "total_blocks": 2
 }

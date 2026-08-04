@@ -34,10 +34,12 @@ CASES = (
     pytest.param("substitution", id="word-substitution"),
     pytest.param("insertion", id="sentence-insertion"),
     pytest.param("deletion", id="sentence-deletion"),
-    # Phase 1 positional alignment cannot detect paragraph splits. Pin the
-    # current modified+inserted-block output here; phase 3 should change it to
-    # a structural split with shared grouping.
-    pytest.param("paragraph_split", id="paragraph-split-phase-1-positional"),
+    # Block alignment turns this into a SPLIT group carrying zero edits: the
+    # author changed the paragraphing and not one word. Before alignment it
+    # pinned as a modified block plus an inserted one with 24 phantom edits.
+    pytest.param("paragraph_split", id="paragraph-split"),
+    # Below the alignment threshold nothing is claimed to correspond, so this
+    # is a clean deletion and insertion rather than a 0.43-similarity pairing.
     pytest.param("unrelated", id="unrelated-texts"),
     pytest.param("unicode", id="unicode-punctuation"),
 )

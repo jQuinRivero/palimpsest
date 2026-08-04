@@ -1,11 +1,16 @@
 "use client";
 
-import { Fragment, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { ComparisonResult, ViewMode } from "@/lib/types";
-import { BlockConnector } from "./BlockConnector";
+import { ChangeNavigator } from "./ChangeNavigator";
 import { DiffBlockRow } from "./DiffBlockRow";
 import { DiffSummaryBar } from "./DiffSummaryBar";
+import {
+  VirtualizedSynopticView,
+  type SynopticHandle,
+} from "./VirtualizedSynopticView";
+import { useBlockNavigation } from "@/lib/hooks/useBlockNavigation";
 
 function ViewModeToggle({
   mode,
@@ -36,14 +41,6 @@ function ViewModeToggle({
         </button>
       ))}
     </div>
-  );
-}
-
-function PaneHeading({ children }: { children: React.ReactNode }) {
-  return (
-    <h2 className="mb-3 border-b border-rule pb-2 font-ui text-xs font-semibold uppercase tracking-widest text-ink-muted">
-      {children}
-    </h2>
   );
 }
 
@@ -79,9 +76,13 @@ function MovesToggle({
 export function DiffViewer({
   comparison,
   initialMode = "synoptic",
+  initialBlockIndex = null,
 }: {
   comparison: ComparisonResult;
   initialMode?: ViewMode;
+  /** Seeded from the server so a shared ?block= link paints correctly and
+   *  server and client agree on the first render. */
+  initialBlockIndex?: number | null;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -126,6 +127,17 @@ export function DiffViewer({
     replaceUrlState({ moves: enabled ? null : "off" });
   };
 
+  const synopticRef = useRef<SynopticHandle | null>(null);
+  const nav = useBlockNavigation(blocks, initialBlockIndex);
+
+  // A virtualized row may never have been mounted, so scrolling to a block
+  // must go through the virtualizer rather than through the DOM.
+  useEffect(() => {
+    if (nav.activeBlockIndex === null) return;
+    if (mode !== "synoptic") return;
+    synopticRef.current?.scrollToBlock(nav.activeBlockIndex);
+  }, [mode, nav.activeBlockIndex]);
+
   return (
     <div data-testid="diff-viewer" data-view={mode} data-moves={movesEnabled ? "on" : "off"}>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
@@ -135,6 +147,14 @@ export function DiffViewer({
           <span className="text-ink">{comparison.b.title}</span>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <ChangeNavigator
+            activeBlockIndex={nav.activeBlockIndex}
+            activeChangedPosition={nav.activeChangedPosition}
+            totalChanges={nav.totalChanges}
+            onPrevious={nav.previous}
+            onNext={nav.next}
+            onClear={nav.clear}
+          />
           <MovesToggle enabled={movesEnabled} onChange={changeMovesEnabled} />
           <ViewModeToggle mode={mode} onChange={changeMode} />
         </div>
@@ -147,30 +167,11 @@ export function DiffViewer({
           This comparison has no blocks to display.
         </p>
       ) : mode === "synoptic" ? (
-        <div className="mt-6 grid grid-cols-1 gap-y-3 md:grid-cols-[minmax(0,1fr)_2rem_minmax(0,1fr)] md:gap-x-4">
-          <section aria-label="Manuscript A" className="md:col-start-1">
-            <PaneHeading>Manuscript A</PaneHeading>
-          </section>
-          <div aria-hidden="true" className="hidden md:block" />
-          <section aria-label="Manuscript B" className="md:col-start-3">
-            <PaneHeading>Manuscript B</PaneHeading>
-          </section>
-          {blocks.map((block) => (
-            <Fragment key={`synoptic-${block.id}`}>
-              <DiffBlockRow
-                block={block}
-                side="a"
-                showStructuralMarkers={movesEnabled}
-              />
-              <BlockConnector block={block} showMoves={movesEnabled} />
-              <DiffBlockRow
-                block={block}
-                side="b"
-                showStructuralMarkers={movesEnabled}
-              />
-            </Fragment>
-          ))}
-        </div>
+        <VirtualizedSynopticView
+          ref={synopticRef}
+          blocks={blocks}
+          showStructuralMarkers={movesEnabled}
+        />
       ) : (
         <section className="mt-6 max-w-prose" aria-label="Unified reading">
           {blocks.map((block) => (

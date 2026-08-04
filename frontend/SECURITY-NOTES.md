@@ -38,6 +38,7 @@ point they already have code execution in CI.
 |---|---|---|
 | `postcss` | `^8.5.24` | Clears XSS via unescaped `</style>`, and path traversal / arbitrary file read via attacker-controlled `sourceMappingURL` (GHSA-qx2v, GHSA-6g55, GHSA-r28c) |
 | `sharp` | `^0.35.3` | Clears inherited libvips CVEs (GHSA-f88m-g3jw-g9cj). `sharp` is an *optional* Next.js dependency used only for `next/image` optimisation, which palimpsest does not use |
+| `js-yaml` | `^4.3.0` | Clears quadratic CPU consumption via YAML merge-key chains. Reached through `openapi-typescript`'s Redocly parser, which reads the backend's OpenAPI schema |
 
 ## Next.js version
 

@@ -74,6 +74,12 @@ export const VirtualizedSynopticView = forwardRef<
         style={{ height }}
         increaseViewportBy={OVERSCAN_PX}
         data-testid="synoptic-scroller"
+        // Keyed by block id rather than by index. Virtuoso defaults to the
+        // index, which is fine while `blocks` is the whole comparison but
+        // silently recycles a mounted row into a different block once the
+        // windowed endpoint starts replacing ranges — the reader would see
+        // one witness's prose under another's gutter.
+        computeItemKey={(_, block) => block.id}
         itemContent={(index, block) => (
           <div
             className="grid grid-cols-1 gap-x-4 md:grid-cols-[minmax(0,1fr)_2rem_minmax(0,1fr)]"

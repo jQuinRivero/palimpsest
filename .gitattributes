@@ -1,0 +1,29 @@
+# Normalise line endings so a checkout on Windows and one on Linux produce
+# identical files. Without this, contributors on different platforms generate
+# spurious whole-file diffs, and the golden-corpus payloads in
+# backend/tests/golden would fail byte-comparison across machines.
+* text=auto eol=lf
+
+# Windows-only tooling that genuinely needs CRLF.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Binary: never touch, never diff as text.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.docx binary
+*.woff binary
+*.woff2 binary
+
+# Generated from the OpenAPI schema and committed so drift is visible in
+# review. Collapse it in diffs; it is verified by CI, not by reading.
+frontend/lib/api-types.ts linguist-generated=true
+
+# Lockfiles are generated and noisy in review.
+backend/uv.lock linguist-generated=true
+frontend/package-lock.json linguist-generated=true

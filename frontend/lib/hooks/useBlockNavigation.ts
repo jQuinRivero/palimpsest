@@ -88,8 +88,13 @@ function clampBlockIndex(index: number, blockCount: number): number | null {
 export function useBlockNavigation(
   blocks: readonly DiffBlock[],
   initialBlockIndex?: number | null,
+  totalBlocks?: number,
 ): BlockNavigationState {
   const pathname = usePathname();
+  // Bounds for *intent* are the whole comparison; bounds for *rendering* are
+  // what has loaded. A long comparison arrives in windows, so a shared link to
+  // block 2500 is legitimate long before block 2500 exists on the client.
+  const comparisonSize = Math.max(totalBlocks ?? blocks.length, blocks.length);
   const [activeBlockIndex, setActiveBlockIndex] = useState<number | null>(() => {
     // Seeded from the server so that the first render matches on both sides.
     // Reading window.location here instead would make the server render the
@@ -97,13 +102,16 @@ export function useBlockNavigation(
     // as a hydration mismatch — and would mean a shared ?block= link paints
     // the wrong state before correcting itself.
     if (initialBlockIndex !== undefined && initialBlockIndex !== null) {
-      return clampBlockIndex(initialBlockIndex, blocks.length);
+      return clampBlockIndex(initialBlockIndex, comparisonSize);
     }
     if (typeof window === "undefined") {
       return null;
     }
 
-    return parseBlockParam(new URLSearchParams(window.location.search).get("block"), blocks.length);
+    return parseBlockParam(
+      new URLSearchParams(window.location.search).get("block"),
+      comparisonSize,
+    );
   });
   const hasFocusedInitialBlock = useRef(false);
   const safeActiveBlockIndex =
@@ -175,7 +183,7 @@ export function useBlockNavigation(
 
   const goTo = useCallback(
     (blockIndex: number) => {
-      if (!Number.isSafeInteger(blockIndex) || blockIndex < 0 || blockIndex >= blocks.length) {
+      if (!Number.isSafeInteger(blockIndex) || blockIndex < 0 || blockIndex >= comparisonSize) {
         replaceBlockParam(null);
         setActiveBlockIndex(null);
         return;
@@ -185,7 +193,7 @@ export function useBlockNavigation(
       replaceBlockParam(blockIndex);
       focusBlock(blockIndex);
     },
-    [blocks.length, focusBlock, replaceBlockParam],
+    [comparisonSize, focusBlock, replaceBlockParam],
   );
 
   const clear = useCallback(() => {
@@ -232,10 +240,21 @@ export function useBlockNavigation(
       return;
     }
 
-    const initialBlock = parseBlockParam(new URLSearchParams(window.location.search).get("block"), blocks.length);
+    const initialBlock = parseBlockParam(
+      new URLSearchParams(window.location.search).get("block"),
+      comparisonSize,
+    );
 
     if (initialBlock === null) {
       replaceBlockParam(null);
+      return;
+    }
+
+    // Wait for the block to arrive rather than discarding the link. Stripping
+    // ?block= here because the target sits in an unloaded window is how a
+    // shared citation into a long manuscript silently becomes a link to the
+    // top of the document.
+    if (initialBlock >= blocks.length) {
       return;
     }
 
@@ -243,7 +262,7 @@ export function useBlockNavigation(
       hasFocusedInitialBlock.current = true;
       focusBlock(initialBlock);
     }
-  }, [blocks.length, focusBlock, replaceBlockParam]);
+  }, [blocks.length, comparisonSize, focusBlock, replaceBlockParam]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {

@@ -4,6 +4,9 @@ export interface ChangeNavigatorProps {
   activeChangedPosition: number | null;
   activeBlockIndex: number | null;
   totalChanges: number;
+  /** True while the comparison is still loading windows, so the count is a
+   *  count of what has arrived rather than of the whole collation. */
+  partial?: boolean;
   onPrevious: () => void;
   onNext: () => void;
   onClear?: () => void;
@@ -15,24 +18,30 @@ function statusText(
   activeChangedPosition: number | null,
   activeBlockIndex: number | null,
   totalChanges: number,
+  partial: boolean,
 ) {
+  // "so far" rather than a bare number: a count that will grow must not be
+  // read as a finding about the text.
+  const total = partial ? `${totalChanges} so far` : `${totalChanges}`;
+
   if (totalChanges === 0) {
-    return "No changed blocks";
+    return partial ? "No changed blocks loaded yet" : "No changed blocks";
   }
 
   if (activeChangedPosition === null) {
     return activeBlockIndex === null
-      ? `${totalChanges} changed blocks`
+      ? `${total} changed blocks`
       : `Block ${activeBlockIndex} selected`;
   }
 
-  return `Change ${activeChangedPosition + 1} of ${totalChanges}`;
+  return `Change ${activeChangedPosition + 1} of ${total}`;
 }
 
 export function ChangeNavigator({
   activeChangedPosition,
   activeBlockIndex,
   totalChanges,
+  partial = false,
   onPrevious,
   onNext,
   onClear,
@@ -40,7 +49,7 @@ export function ChangeNavigator({
   disabled = false,
 }: ChangeNavigatorProps) {
   const controlsDisabled = disabled || totalChanges === 0;
-  const label = statusText(activeChangedPosition, activeBlockIndex, totalChanges);
+  const label = statusText(activeChangedPosition, activeBlockIndex, totalChanges, partial);
 
   return (
     <nav

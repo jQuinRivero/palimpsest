@@ -37,12 +37,20 @@ export default async function ComparisonPage({
 
   const mode: ViewMode = view === "unified" ? "unified" : "synoptic";
   const requested = block !== undefined && /^\d+$/.test(block) ? Number(block) : null;
+  // Bounded by the whole comparison, not by the first window. A large
+  // comparison arrives truncated, so clamping against `blocks.length` would
+  // silently drop any shared link pointing past the first window — exactly
+  // the links most worth sharing in a long manuscript.
   const initialBlockIndex =
-    requested !== null && requested < comparison.blocks.length ? requested : null;
+    requested !== null && requested < comparison.total_blocks ? requested : null;
 
   return (
     <main className="mx-auto max-w-7xl px-6 py-10">
       <DiffViewer
+        // Keyed so that navigating from one comparison to another builds a
+        // fresh viewer rather than carrying the previous comparison's loaded
+        // blocks into the new one.
+        key={comparison.comparison_id}
         comparison={comparison}
         initialMode={mode}
         initialBlockIndex={initialBlockIndex}

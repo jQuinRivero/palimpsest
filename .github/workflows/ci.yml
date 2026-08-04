@@ -153,6 +153,14 @@ jobs:
 
       - name: Start API
         working-directory: backend
+        # The window threshold is lowered so the end-to-end suite can exercise
+        # a truncated comparison with a few hundred blocks rather than the few
+        # thousand the production default needs. Playwright sets the same
+        # values when it starts the API itself; the two must agree, or
+        # windowing.spec fails its own premise check. See playwright.config.ts.
+        env:
+          PALIMPSEST_COMPARISON_WINDOW_BLOCK_THRESHOLD: "25"
+          PALIMPSEST_DEFAULT_BLOCK_PAGE_LIMIT: "10"
         run: |
           uv run uvicorn app.main:app --host 127.0.0.1 --port 8000 &
           for _ in $(seq 1 40); do

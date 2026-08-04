@@ -12,6 +12,8 @@ import {
   type SynopticHandle,
 } from "./VirtualizedSynopticView";
 import { useBlockNavigation } from "@/lib/hooks/useBlockNavigation";
+import { useWindowedBlocks } from "@/lib/hooks/useWindowedBlocks";
+import { LoadingProgress } from "./LoadingProgress";
 
 function ViewModeToggle({
   mode,
@@ -111,7 +113,8 @@ export function DiffViewer({
     searchParams.get("view") === "unified" ? "unified" : initialMode,
   );
   const [movesEnabled, setMovesEnabled] = useState(searchParams.get("moves") !== "off");
-  const blocks = comparison.blocks;
+  const windowed = useWindowedBlocks(comparison);
+  const blocks = windowed.blocks;
 
   const replaceUrlState = useMemo(
     () => (updates: Record<string, string | null>) => {
@@ -148,7 +151,7 @@ export function DiffViewer({
   };
 
   const synopticRef = useRef<SynopticHandle | null>(null);
-  const nav = useBlockNavigation(blocks, initialBlockIndex);
+  const nav = useBlockNavigation(blocks, initialBlockIndex, windowed.totalBlocks);
 
   // A virtualized row may never have been mounted, so scrolling to a block
   // must go through the virtualizer rather than through the DOM.
@@ -171,6 +174,7 @@ export function DiffViewer({
             activeBlockIndex={nav.activeBlockIndex}
             activeChangedPosition={nav.activeChangedPosition}
             totalChanges={nav.totalChanges}
+            partial={!windowed.isComplete}
             onPrevious={nav.previous}
             onNext={nav.next}
             onClear={nav.clear}
@@ -182,6 +186,14 @@ export function DiffViewer({
       </div>
 
       <DiffSummaryBar metrics={comparison.metrics} />
+
+      <LoadingProgress
+        loadedBlocks={blocks.length}
+        totalBlocks={windowed.totalBlocks}
+        isComplete={windowed.isComplete}
+        error={windowed.error}
+        onRetry={windowed.retry}
+      />
 
       {blocks.length === 0 ? (
         <p className="py-16 text-center font-ui text-sm text-ink-muted">

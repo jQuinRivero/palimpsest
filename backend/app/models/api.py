@@ -91,9 +91,9 @@ class ComparisonStatus(StrEnum):
 class ComparisonAccepted(BaseModel):
     """Returned with 202 when a comparison exceeds the inline diff budget.
 
-    Unused in phase 1, which always computes inline and returns 201. The model
-    exists now so that enabling the asynchronous path is a routing change
-    rather than a schema change.
+    The client polls ``GET /comparisons/{id}`` and receives this same shape
+    until the comparison reaches ``COMPLETE``, at which point the full
+    ``ComparisonResult`` is returned instead.
     """
 
     comparison_id: str

@@ -249,10 +249,10 @@ def create_comparison(
 ) -> ComparisonResult | ComparisonAccepted:
     """Collate two witnesses.
 
-    Phase 1 always computes inline and returns ``201``. The ``202
-    ComparisonAccepted`` path for oversize manuscripts is phase 5; the response
-    model already exists so enabling it is a routing change, not a schema
-    change.
+    Small comparisons are computed inline and return ``201`` with the full
+    result. Comparisons above the inline budget return ``202`` with a
+    ``ComparisonAccepted`` body and are computed in the background; the client
+    polls ``GET /comparisons/{id}`` until it reaches ``COMPLETE``.
     """
     _no_store(response)
 

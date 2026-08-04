@@ -93,10 +93,10 @@ export interface paths {
          * Create Comparison
          * @description Collate two witnesses.
          *
-         *     Phase 1 always computes inline and returns ``201``. The ``202
-         *     ComparisonAccepted`` path for oversize manuscripts is phase 5; the response
-         *     model already exists so enabling it is a routing change, not a schema
-         *     change.
+         *     Small comparisons are computed inline and return ``201`` with the full
+         *     result. Comparisons above the inline budget return ``202`` with a
+         *     ``ComparisonAccepted`` body and are computed in the background; the client
+         *     polls ``GET /comparisons/{id}`` until it reaches ``COMPLETE``.
          */
         post: operations["create_comparison_api_v1_comparisons_post"];
         delete?: never;
@@ -254,6 +254,35 @@ export interface components {
             diff_options_defaults: components["schemas"]["DiffOptions"];
         };
         /**
+         * ComparisonAccepted
+         * @description Returned with 202 when a comparison exceeds the inline diff budget.
+         *
+         *     The client polls ``GET /comparisons/{id}`` and receives this same shape
+         *     until the comparison reaches ``COMPLETE``, at which point the full
+         *     ``ComparisonResult`` is returned instead.
+         */
+        ComparisonAccepted: {
+            /** Comparison Id */
+            comparison_id: string;
+            /** @default PENDING */
+            status: components["schemas"]["ComparisonStatus"];
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /**
+             * Retry After
+             * @default 2
+             */
+            retry_after: number;
+        };
+        /**
          * ComparisonResult
          * @description The complete collation of two witnesses.
          */
@@ -281,6 +310,11 @@ export interface components {
             /** Total Blocks */
             total_blocks: number;
         };
+        /**
+         * ComparisonStatus
+         * @enum {string}
+         */
+        ComparisonStatus: "PENDING" | "COMPLETE" | "FAILED";
         /** CreateComparisonRequest */
         CreateComparisonRequest: {
             /** A Document Id */
@@ -899,7 +933,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ComparisonResult"];
+                    "application/json": components["schemas"]["ComparisonResult"] | components["schemas"]["ComparisonAccepted"];
                 };
             };
             /** @description Bad request */
@@ -995,7 +1029,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ComparisonResult"];
+                    "application/json": components["schemas"]["ComparisonResult"] | components["schemas"]["ComparisonAccepted"];
                 };
             };
             /** @description Bad request */

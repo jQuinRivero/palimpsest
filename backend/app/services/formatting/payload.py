@@ -1,12 +1,7 @@
 """Payload assembly — the formatting service.
 
-Turns aligned block pairs into ``DiffBlock`` objects and a ``ComparisonResult``.
-This layer owns the wire shape so the diff engine never thinks about the UI.
-
-Phase 1 aligns blocks positionally. Real alignment — exact-match anchoring,
-gap-confined similarity search, split/merge detection and LIS move detection —
-arrives in phase 3 and replaces ``_align_positionally`` only. Everything else
-in this module is already the final shape.
+Turns alignments into ``DiffBlock`` objects and a ``ComparisonResult``. This
+layer owns the wire shape so the diff engine never thinks about the UI.
 """
 
 from __future__ import annotations
@@ -19,44 +14,175 @@ from app.models.diff import (
     DiffBlock,
     DiffOptions,
     Token,
+    TokenStatus,
 )
-from app.models.document import Block, Document, DocumentSummary
-from app.models.identifiers import diff_block_id, new_comparison_id
+from app.models.document import Block, BlockKind, Document, DocumentSummary
+from app.models.identifiers import diff_block_id, group_id, new_comparison_id
+from app.services.diffing.alignment import Alignment, Relation, align
 from app.services.diffing.engine import diff_tokens
 from app.services.diffing.metrics import block_metrics, document_metrics
 
 
-def _pair_status(a: Block | None, b: Block | None, tokens: list[Token]) -> BlockStatus:
-    if a is None:
-        return BlockStatus.INSERTED
-    if b is None:
-        return BlockStatus.DELETED
-    if a.text == b.text:
-        return BlockStatus.UNCHANGED
-    return BlockStatus.MODIFIED
+def _joined(blocks: list[Block], indices: tuple[int, ...]) -> str:
+    return " ".join(blocks[i].text for i in indices)
 
 
-def _align_positionally(
-    a_blocks: list[Block], b_blocks: list[Block]
-) -> list[tuple[Block | None, Block | None]]:
-    """Phase-1 alignment: pair blocks by ordinal, then report the tail.
+def _status_for(alignment: Alignment, a_text: str, b_text: str) -> BlockStatus:
+    match alignment.relation:
+        case Relation.INSERTED:
+            return BlockStatus.INSERTED
+        case Relation.DELETED:
+            return BlockStatus.DELETED
+        case Relation.SPLIT:
+            return BlockStatus.SPLIT
+        case Relation.MERGED:
+            return BlockStatus.MERGED
+        case _:
+            if alignment.move_distance is not None:
+                # A block both moved and edited reports as MOVED: the
+                # structural fact dominates, and the token metrics still carry
+                # the edit counts so nothing is hidden.
+                return BlockStatus.MOVED
+            return BlockStatus.UNCHANGED if a_text == b_text else BlockStatus.MODIFIED
 
-    This is deliberately naive and is the one piece of the diff pipeline that
-    phase 3 replaces wholesale. It cannot detect a move, a split or a merge —
-    which is precisely why docs/04-diff-engine.md treats alignment as the
-    component carrying the real intelligence.
+
+def _kind_for(alignment: Alignment, a_blocks: list[Block], b_blocks: list[Block]) -> BlockKind:
+    if alignment.b_indices:
+        return b_blocks[alignment.b_indices[0]].kind
+    if alignment.a_indices:
+        return a_blocks[alignment.a_indices[0]].kind
+    return BlockKind.PARAGRAPH
+
+
+def _split_run(token: Token, at: int) -> tuple[Token, Token]:
+    """Cut one token's text at a character offset, preserving status."""
+    return (
+        Token(text=token.text[:at], status=token.status),
+        Token(text=token.text[at:], status=token.status),
+    )
+
+
+def _distribute(
+    tokens: list[Token], member_lengths: list[int], many_is_b: bool
+) -> list[list[Token]]:
+    """Partition a group's unified token stream across its members.
+
+    The group is diffed once, as a whole, so that a pure re-paragraphing
+    reports zero edits — the author changed the paragraphing and not one word,
+    and diffing each member against the whole would manufacture a deletion and
+    an insertion for every word that moved across the boundary.
+
+    Tokens are then apportioned by walking the many-side text and cutting at
+    each member's boundary. Tokens absent from the many side (deletions when
+    the many side is B, insertions when it is A) attach to the member being
+    built, so nothing is lost.
     """
-    pairs: list[tuple[Block | None, Block | None]] = []
-    shared = min(len(a_blocks), len(b_blocks))
+    absent = TokenStatus.DELETION if many_is_b else TokenStatus.INSERTION
 
-    for index in range(shared):
-        pairs.append((a_blocks[index], b_blocks[index]))
-    for block in a_blocks[shared:]:
-        pairs.append((block, None))
-    for block in b_blocks[shared:]:
-        pairs.append((None, block))
+    members: list[list[Token]] = [[] for _ in member_lengths]
+    if not member_lengths:
+        return members
 
-    return pairs
+    index = 0
+    consumed = 0
+    remaining = list(tokens)
+
+    while remaining:
+        token = remaining.pop(0)
+
+        if token.status is absent:
+            members[index].append(token)
+            continue
+
+        capacity = member_lengths[index] - consumed
+        if len(token.text) <= capacity or index == len(member_lengths) - 1:
+            members[index].append(token)
+            consumed += len(token.text)
+        else:
+            head, tail = _split_run(token, capacity)
+            if head.text:
+                members[index].append(head)
+            remaining.insert(0, tail)
+            consumed = member_lengths[index]
+
+        while index < len(member_lengths) - 1 and consumed >= member_lengths[index]:
+            consumed -= member_lengths[index]
+            index += 1
+
+    return members
+
+
+def _group_blocks(
+    alignment: Alignment,
+    a_blocks: list[Block],
+    b_blocks: list[Block],
+    options: DiffOptions,
+    status: BlockStatus,
+    gid: str,
+    next_sequence: int,
+) -> list[DiffBlock]:
+    """Emit one ``DiffBlock`` per member of a split or merge group.
+
+    All members share a ``group_id`` so the client draws a single connector.
+    """
+    split = alignment.relation is Relation.SPLIT
+    many_side = alignment.b_indices if split else alignment.a_indices
+    many_blocks = b_blocks if split else a_blocks
+    one_indices = alignment.a_indices if split else alignment.b_indices
+    one_blocks = a_blocks if split else b_blocks
+
+    one_text = _joined(one_blocks, one_indices)
+    many_texts = [many_blocks[i].text for i in many_side]
+    many_joined = " ".join(many_texts)
+
+    a_text = one_text if split else many_joined
+    b_text = many_joined if split else one_text
+    tokens, _, _ = diff_tokens(a_text, b_text, options)
+
+    # The joining space between members belongs to the preceding member.
+    lengths = [len(text) + 1 for text in many_texts]
+    lengths[-1] -= 1
+
+    per_member = _distribute(tokens, lengths, many_is_b=split)
+
+    emitted: list[DiffBlock] = []
+    for position, member in enumerate(many_side):
+        member_tokens = per_member[position]
+        member_a = [t for t in member_tokens if t.status is not TokenStatus.INSERTION]
+        member_b = [t for t in member_tokens if t.status is not TokenStatus.DELETION]
+
+        if split:
+            a_index, b_index = one_indices[0], member
+            a_block_id = one_blocks[one_indices[0]].id
+            b_block_id = many_blocks[member].id
+        else:
+            a_index, b_index = member, one_indices[0]
+            a_block_id = many_blocks[member].id
+            b_block_id = one_blocks[one_indices[0]].id
+
+        a_joined = "".join(t.text for t in member_a)
+        b_joined = "".join(t.text for t in member_b)
+
+        emitted.append(
+            DiffBlock(
+                id=diff_block_id(next_sequence + position),
+                status=status,
+                kind=_kind_for(alignment, a_blocks, b_blocks),
+                a_index=a_index,
+                b_index=b_index,
+                a_block_id=a_block_id,
+                b_block_id=b_block_id,
+                tokens=member_tokens,
+                a_tokens=member_a,
+                b_tokens=member_b,
+                metrics=block_metrics(
+                    member_tokens, a_joined, b_joined, status=BlockStatus.MODIFIED
+                ),
+                move_distance=None,
+                group_id=gid,
+            )
+        )
+    return emitted
 
 
 def build_diff_blocks(
@@ -65,35 +191,58 @@ def build_diff_blocks(
     options: DiffOptions | None = None,
 ) -> list[DiffBlock]:
     options = options or DiffOptions()
-    pairs = _align_positionally(a_document.blocks, b_document.blocks)
+    a_blocks = a_document.blocks
+    b_blocks = b_document.blocks
+
+    alignments = align(a_blocks, b_blocks, options)
 
     blocks: list[DiffBlock] = []
-    for sequence, (a_block, b_block) in enumerate(pairs, start=1):
-        a_text = a_block.text if a_block else ""
-        b_text = b_block.text if b_block else ""
+    sequence = 1
+    group_sequence = 0
+
+    for alignment in alignments:
+        if alignment.relation in (Relation.SPLIT, Relation.MERGED):
+            group_sequence += 1
+            members = _group_blocks(
+                alignment,
+                a_blocks,
+                b_blocks,
+                options,
+                _status_for(alignment, "", ""),
+                group_id(group_sequence),
+                sequence,
+            )
+            blocks.extend(members)
+            sequence += len(members)
+            continue
+
+        a_text = _joined(a_blocks, alignment.a_indices)
+        b_text = _joined(b_blocks, alignment.b_indices)
+        status = _status_for(alignment, a_text, b_text)
 
         tokens, a_tokens, b_tokens = diff_tokens(a_text, b_text, options)
-        status = _pair_status(a_block, b_block, tokens)
-
         blocks.append(
             DiffBlock(
                 id=diff_block_id(sequence),
                 status=status,
-                # An inserted block has no A counterpart, so its kind comes
-                # from B, and vice versa.
-                kind=(b_block or a_block).kind,  # type: ignore[union-attr]
-                a_index=a_block.index if a_block else None,
-                b_index=b_block.index if b_block else None,
-                a_block_id=a_block.id if a_block else None,
-                b_block_id=b_block.id if b_block else None,
+                kind=_kind_for(alignment, a_blocks, b_blocks),
+                a_index=alignment.a_index,
+                b_index=alignment.b_index,
+                a_block_id=(
+                    a_blocks[alignment.a_index].id if alignment.a_index is not None else None
+                ),
+                b_block_id=(
+                    b_blocks[alignment.b_index].id if alignment.b_index is not None else None
+                ),
                 tokens=tokens,
                 a_tokens=a_tokens,
                 b_tokens=b_tokens,
                 metrics=block_metrics(tokens, a_text, b_text, status=status),
-                move_distance=None,
+                move_distance=alignment.move_distance,
                 group_id=None,
             )
         )
+        sequence += 1
 
     return blocks
 

@@ -129,18 +129,63 @@ class TestBuildComparison:
         assert result.metrics.b_word_count == 6
 
     def test_reparagraphing_reports_structure_not_rewrite(self) -> None:
-        """Phase 1 cannot detect a split, and must not pretend otherwise.
+        """A split with no wording change must report structure, not a rewrite.
 
-        Documents the honest phase-1 limitation: positional alignment sees a
-        modification plus an insertion. Phase 3's alignment layer is what turns
-        this into a SPLIT with zero edits.
+        This is the claim the alignment layer exists to make good: the author
+        changed the paragraphing and not one word, so the result is a SPLIT
+        group carrying zero edits.
         """
         doc_a = make_document("a", ["It was a long crossing. The waves were grey."])
         doc_b = make_document("b", ["It was a long crossing.", "The waves were grey."])
         result = build_comparison(doc_a, doc_b)
 
         assert_comparison(result)
-        assert result.metrics.blocks_split == 0, "phase 1 has no split detection"
+        assert result.metrics.blocks_split == 2
+        assert result.metrics.edit_count == 0
+
+        group_ids = {b.group_id for b in result.blocks}
+        assert len(group_ids) == 1 and None not in group_ids
+
+    def test_moved_block_is_reported_as_moved(self) -> None:
+        doc_a = make_document("a", ["Alpha here.", "Beta here.", "Gamma here."])
+        doc_b = make_document("b", ["Gamma here.", "Alpha here.", "Beta here."])
+        result = build_comparison(doc_a, doc_b)
+
+        assert_comparison(result)
+        assert result.metrics.blocks_moved == 1
+        assert result.metrics.edit_count == 0, "a move changes no words"
+
+        moved = next(b for b in result.blocks if b.status is BlockStatus.MOVED)
+        assert moved.move_distance == -2, "moved two blocks earlier"
+
+    def test_move_detection_can_be_switched_off(self) -> None:
+        """Repetitive text can provoke false moves, so the reader can opt out."""
+        doc_a = make_document("a", ["Alpha here.", "Beta here.", "Gamma here."])
+        doc_b = make_document("b", ["Gamma here.", "Alpha here.", "Beta here."])
+        result = build_comparison(doc_a, doc_b, DiffOptions(detect_moves=False))
+
+        assert_comparison(result)
+        assert result.metrics.blocks_moved == 0
+        assert all(b.move_distance is None for b in result.blocks)
+
+    def test_merge_reports_structure_not_rewrite(self) -> None:
+        doc_a = make_document("a", ["It was a long crossing.", "The waves were grey."])
+        doc_b = make_document("b", ["It was a long crossing. The waves were grey."])
+        result = build_comparison(doc_a, doc_b)
+
+        assert_comparison(result)
+        assert result.metrics.blocks_merged == 2
+        assert result.metrics.edit_count == 0
+
+    def test_unrelated_texts_do_not_pair(self) -> None:
+        """Below the alignment threshold, nothing is claimed to correspond."""
+        doc_a = make_document("a", ["Alpha beta gamma delta epsilon."])
+        doc_b = make_document("b", ["Wholly unrelated prose appears here now."])
+        result = build_comparison(doc_a, doc_b)
+
+        assert_comparison(result)
+        statuses = {b.status for b in result.blocks}
+        assert statuses == {BlockStatus.INSERTED, BlockStatus.DELETED}
 
     def test_totals_are_consistent(self) -> None:
         doc_a = make_document("a", ["alpha", "beta", "gamma"])

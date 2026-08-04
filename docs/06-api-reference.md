@@ -369,14 +369,14 @@ Large manuscripts that exceed the synchronous diff budget but remain within the 
 ```json
 {
   "comparison_id": "cmp_mD2qS8vW1xY6zA3bC9eF",
-  "status": "pending",
+  "status": "PENDING",
   "created_at": "2026-08-04T13:16:05Z",
   "expires_at": "2026-08-11T13:16:05Z",
-  "poll_after_seconds": 2
+  "retry_after": 2
 }
 ```
 
-Clients poll `GET /api/v1/comparisons/{comparison_id}`. While `status` is `pending`, the server returns `202 Accepted` with the same `ComparisonAccepted` shape and may increase `poll_after_seconds`. Clients should use exponential backoff beginning at 2 seconds, cap it at 15 seconds, and stop polling when the comparison returns `200 OK`, `COMPARISON_EXPIRED`, or `COMPARISON_NOT_FOUND`.
+Clients poll `GET /api/v1/comparisons/{comparison_id}`. While `status` is `PENDING`, the server returns `202 Accepted` with the same `ComparisonAccepted` shape and may increase `retry_after`. Clients should use exponential backoff beginning at 2 seconds, cap it at 15 seconds, and stop polling when the comparison returns `200 OK`, `COMPARISON_EXPIRED`, or `COMPARISON_NOT_FOUND`.
 
 ### Errors
 

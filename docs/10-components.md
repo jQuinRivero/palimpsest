@@ -195,6 +195,24 @@ Unified view renders one column at `--measure-prose`. It uses `DiffBlock.tokens`
 
 ## SyncScrollContainer
 
+> **Superseded by `VirtualizedSynopticView`.** Implementation showed that the
+> problem this component was designed to solve can be removed rather than
+> solved. A single virtualized list whose rows each contain Manuscript A, the
+> connector and Manuscript B places corresponding blocks in one grid row, so
+> they are adjacent *by construction* and cannot drift by any amount, at any
+> scroll position, under any difference in rendered height. There is one scroll
+> position because there is one scroller, and the two-phase measurement dance
+> below — approximate `scrollToIndex`, then a corrective frame once the twin
+> row's real height is known — becomes unnecessary.
+>
+> The cost is genuine and is not a degraded version of the design below: the
+> panes cannot be scrolled independently, so a researcher cannot hold chapter
+> two beside chapter nine. That is a distinct feature and would need a
+> deliberate second view; it is recorded in [Roadmap](./14-roadmap.md).
+>
+> The specification below is retained because it remains the correct design for
+> any future independent-pane view, where anchor-linking really is required.
+
 `SyncScrollContainer` synchronizes Manuscript A and Manuscript B in synoptic view. It is anchor-linked to aligned block pairs and never pixel- or percentage-linked across the full scroll range.
 
 ### Props

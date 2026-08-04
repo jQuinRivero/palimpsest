@@ -54,13 +54,21 @@ This is exactly why v1 avoids it. SQLite session storage with TTL is a deliberat
 
 **Existing seam.** `SessionStore` isolates storage operations. A persistent backend can replace `backend/app/storage/sqlite_store.py` if it preserves API semantics or explicitly changes them through an ADR.
 
+### Independent pane scrolling
+
+**Motivation.** Synoptic reading currently uses one virtualized list whose rows each hold Manuscript A, the connector and Manuscript B. Corresponding blocks therefore share a grid row and cannot drift apart, which is why no scroll synchronization is needed. The cost is that the panes move together: a researcher cannot hold chapter two of one witness beside chapter nine of the other.
+
+**What it requires.** A second, deliberately different view with two independently scrolling virtualized panes. Once the panes can move apart, keeping them related again requires exactly the anchor-linked algorithm specified in [Components](./10-components.md): identify the leading visible aligned pair in the driving pane, compute fractional progress within it, and position the follower on its twin — never a pixel or percentage lock, which drifts within the first screenful. Virtualization makes it harder still, because the follower may have no measured row for the twin at the moment the driver reaches it, so positioning has to be approximate first and corrected once the real height is known.
+
+**Existing seam.** `VirtualizedSynopticView` already isolates the reading surface behind a small handle, so an alternative view is an addition rather than a rewrite. `DiffBlock.a_index`, `b_index` and `group_id` supply the anchors.
+
 ### Alignment quality
 
 **Motivation.** Heavily rewritten passages, verse, drama, and repetitive text expose the limits of block similarity plus LIS move detection.
 
 **What it requires.** Semantic or embedding-assisted alignment may help match paraphrased or heavily revised blocks, but it must not turn the tool into meaning-level diffing. Verse and drama need structure-aware block segmentation so refrains, speaker labels, and stage directions do not confuse move detection. User-correctable alignment would let a scholar override a bad match; those corrections could also become training data for future alignment heuristics.
 
-**Existing seam.** `backend/app/services/diffing/{alignment,moves}.py`, `DiffOptions.align_threshold`, `DiffOptions.move_threshold`, `DiffOptions.detect_moves`, `DiffBlock.group_id`, and URL state `?moves=on|off`.
+**Existing seam.** `backend/app/services/diffing/alignment.py`, `DiffOptions.align_threshold`, `DiffOptions.move_threshold`, `DiffOptions.detect_moves`, `DiffBlock.group_id`, and URL state `?moves=on|off`.
 
 ### Scale
 

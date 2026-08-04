@@ -216,3 +216,25 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# ---- palimpsest ----
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+next-env.d.ts
+*.tsbuildinfo
+
+# Playwright
+/frontend/test-results/
+/frontend/playwright-report/
+/frontend/blob-report/
+/frontend/.playwright/
+
+# Session cache. Comparisons are a cache with a deadline, not a system of
+# record, and uploaded manuscripts may be unpublished — never commit one.
+*.db
+*.db-wal
+*.db-shm
+/backend/palimpsest.db*

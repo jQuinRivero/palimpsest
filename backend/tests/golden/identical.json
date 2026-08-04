@@ -1,0 +1,133 @@
+{
+  "comparison_id": "cmp_golden_identical",
+  "created_at": "2026-01-02T03:04:05Z",
+  "expires_at": "2026-01-09T03:04:05Z",
+  "a": {
+    "id": "doc_golden_identical_a",
+    "title": "Golden identical A",
+    "source_format": "TXT",
+    "metadata": {
+      "word_count": 55,
+      "block_count": 2,
+      "char_count": 291,
+      "detected_language": null,
+      "parser_name": "plaintext",
+      "parser_version": "1",
+      "ocr_confidence": null
+    },
+    "warnings": []
+  },
+  "b": {
+    "id": "doc_golden_identical_b",
+    "title": "Golden identical B",
+    "source_format": "TXT",
+    "metadata": {
+      "word_count": 55,
+      "block_count": 2,
+      "char_count": 291,
+      "detected_language": null,
+      "parser_name": "plaintext",
+      "parser_version": "1",
+      "ocr_confidence": null
+    },
+    "warnings": []
+  },
+  "blocks": [
+    {
+      "id": "dbk_0001",
+      "status": "UNCHANGED",
+      "kind": "PARAGRAPH",
+      "a_index": 0,
+      "b_index": 0,
+      "a_block_id": "blk_a_0000",
+      "b_block_id": "blk_b_0000",
+      "tokens": [
+        {
+          "text": "It is a truth universally acknowledged, that a single man in possession of a good fortune, must be in want of a wife.",
+          "status": "UNCHANGED"
+        }
+      ],
+      "a_tokens": [
+        {
+          "text": "It is a truth universally acknowledged, that a single man in possession of a good fortune, must be in want of a wife.",
+          "status": "UNCHANGED"
+        }
+      ],
+      "b_tokens": [
+        {
+          "text": "It is a truth universally acknowledged, that a single man in possession of a good fortune, must be in want of a wife.",
+          "status": "UNCHANGED"
+        }
+      ],
+      "metrics": {
+        "similarity": 1.0,
+        "edit_count": 0,
+        "insertions": 0,
+        "deletions": 0,
+        "churn": 0.0
+      },
+      "move_distance": null,
+      "group_id": null
+    },
+    {
+      "id": "dbk_0002",
+      "status": "UNCHANGED",
+      "kind": "PARAGRAPH",
+      "a_index": 1,
+      "b_index": 1,
+      "a_block_id": "blk_a_0001",
+      "b_block_id": "blk_b_0001",
+      "tokens": [
+        {
+          "text": "However little known the feelings or views of such a man may be on his first entering a neighbourhood, this truth is so well fixed in the minds of the surrounding families.",
+          "status": "UNCHANGED"
+        }
+      ],
+      "a_tokens": [
+        {
+          "text": "However little known the feelings or views of such a man may be on his first entering a neighbourhood, this truth is so well fixed in the minds of the surrounding families.",
+          "status": "UNCHANGED"
+        }
+      ],
+      "b_tokens": [
+        {
+          "text": "However little known the feelings or views of such a man may be on his first entering a neighbourhood, this truth is so well fixed in the minds of the surrounding families.",
+          "status": "UNCHANGED"
+        }
+      ],
+      "metrics": {
+        "similarity": 1.0,
+        "edit_count": 0,
+        "insertions": 0,
+        "deletions": 0,
+        "churn": 0.0
+      },
+      "move_distance": null,
+      "group_id": null
+    }
+  ],
+  "metrics": {
+    "similarity": 1.0,
+    "edit_count": 0,
+    "insertions": 0,
+    "deletions": 0,
+    "unchanged_tokens": 55,
+    "churn": 0.0,
+    "blocks_moved": 0,
+    "blocks_split": 0,
+    "blocks_merged": 0,
+    "a_word_count": 55,
+    "b_word_count": 55
+  },
+  "options": {
+    "granularity": "WORD",
+    "detect_moves": true,
+    "align_threshold": 0.5,
+    "move_threshold": 0.75,
+    "ignore_case": false,
+    "ignore_punctuation": false,
+    "normalize_whitespace": true
+  },
+  "truncated": false,
+  "total_blocks": 2
+}

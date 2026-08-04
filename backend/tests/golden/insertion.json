@@ -1,0 +1,113 @@
+{
+  "comparison_id": "cmp_golden_insertion",
+  "created_at": "2026-01-02T03:04:05Z",
+  "expires_at": "2026-01-09T03:04:05Z",
+  "a": {
+    "id": "doc_golden_insertion_a",
+    "title": "Golden insertion A",
+    "source_format": "TXT",
+    "metadata": {
+      "word_count": 33,
+      "block_count": 1,
+      "char_count": 172,
+      "detected_language": null,
+      "parser_name": "plaintext",
+      "parser_version": "1",
+      "ocr_confidence": null
+    },
+    "warnings": []
+  },
+  "b": {
+    "id": "doc_golden_insertion_b",
+    "title": "Golden insertion B",
+    "source_format": "TXT",
+    "metadata": {
+      "word_count": 40,
+      "block_count": 1,
+      "char_count": 211,
+      "detected_language": null,
+      "parser_name": "plaintext",
+      "parser_version": "1",
+      "ocr_confidence": null
+    },
+    "warnings": []
+  },
+  "blocks": [
+    {
+      "id": "dbk_0001",
+      "status": "MODIFIED",
+      "kind": "PARAGRAPH",
+      "a_index": 0,
+      "b_index": 0,
+      "a_block_id": "blk_a_0000",
+      "b_block_id": "blk_b_0000",
+      "tokens": [
+        {
+          "text": "Shall I compare thee to a summer's day? Thou art more lovely and more temperate. ",
+          "status": "UNCHANGED"
+        },
+        {
+          "text": "The promise lingers in a quieter line. ",
+          "status": "INSERTION"
+        },
+        {
+          "text": "Rough winds do shake the darling buds of May, and summer's lease hath all too short a date.",
+          "status": "UNCHANGED"
+        }
+      ],
+      "a_tokens": [
+        {
+          "text": "Shall I compare thee to a summer's day? Thou art more lovely and more temperate. Rough winds do shake the darling buds of May, and summer's lease hath all too short a date.",
+          "status": "UNCHANGED"
+        }
+      ],
+      "b_tokens": [
+        {
+          "text": "Shall I compare thee to a summer's day? Thou art more lovely and more temperate. ",
+          "status": "UNCHANGED"
+        },
+        {
+          "text": "The promise lingers in a quieter line. ",
+          "status": "INSERTION"
+        },
+        {
+          "text": "Rough winds do shake the darling buds of May, and summer's lease hath all too short a date.",
+          "status": "UNCHANGED"
+        }
+      ],
+      "metrics": {
+        "similarity": 0.8982,
+        "edit_count": 7,
+        "insertions": 7,
+        "deletions": 0,
+        "churn": 0.0959
+      },
+      "move_distance": null,
+      "group_id": null
+    }
+  ],
+  "metrics": {
+    "similarity": 0.9041,
+    "edit_count": 7,
+    "insertions": 7,
+    "deletions": 0,
+    "unchanged_tokens": 33,
+    "churn": 0.0959,
+    "blocks_moved": 0,
+    "blocks_split": 0,
+    "blocks_merged": 0,
+    "a_word_count": 33,
+    "b_word_count": 40
+  },
+  "options": {
+    "granularity": "WORD",
+    "detect_moves": true,
+    "align_threshold": 0.5,
+    "move_threshold": 0.75,
+    "ignore_case": false,
+    "ignore_punctuation": false,
+    "normalize_whitespace": true
+  },
+  "truncated": false,
+  "total_blocks": 1
+}

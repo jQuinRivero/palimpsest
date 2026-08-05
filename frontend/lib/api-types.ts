@@ -189,6 +189,11 @@ export interface components {
             char_start: number;
             /** Char End */
             char_end: number;
+            /**
+             * Starts Stanza
+             * @default false
+             */
+            starts_stanza: boolean;
             /** Confidence */
             confidence?: number | null;
             bbox?: components["schemas"]["BoundingBox"] | null;
@@ -381,6 +386,7 @@ export interface components {
             move_distance: number | null;
             /** Group Id */
             group_id: string | null;
+            stanza_boundary: components["schemas"]["StanzaBoundary"] | null;
         };
         /** DiffMetrics */
         DiffMetrics: {
@@ -402,6 +408,8 @@ export interface components {
             blocks_split: number;
             /** Blocks Merged */
             blocks_merged: number;
+            /** Stanza Breaks Changed */
+            stanza_breaks_changed: number;
             /** A Word Count */
             a_word_count: number;
             /** B Word Count */
@@ -580,6 +588,17 @@ export interface components {
          * @enum {string}
          */
         SourceFormat: "TXT" | "MARKDOWN" | "DOCX" | "PDF" | "OCR";
+        /**
+         * StanzaBoundary
+         * @description What the two witnesses say about a stanza break at this position.
+         *
+         *     ``A_ONLY`` and ``B_ONLY`` are the finding: a break present in one witness
+         *     and absent in the other. Dividing an octave into two quatrains changes no
+         *     words at all, so without this the collation reports two formally different
+         *     poems as identical. See ADR-0007.
+         * @enum {string}
+         */
+        StanzaBoundary: "NONE" | "SHARED" | "A_ONLY" | "B_ONLY";
         /**
          * Token
          * @description A contiguous run of same-status words.

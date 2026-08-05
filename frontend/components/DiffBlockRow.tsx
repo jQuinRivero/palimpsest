@@ -28,13 +28,47 @@ function proseClass(kind: DiffBlock["kind"]): string {
  *
  * Verse lines are lines of one poem, not consecutive paragraphs. Giving each
  * the spacing of a paragraph sets a stanza double-spaced and destroys its
- * shape on the page.
+ * shape on the page. A line that opens a stanza takes the space back, because
+ * the blank line between stanzas is part of the poem's form.
  */
-function spacingClass(kind: DiffBlock["kind"]): string {
-  return kind === "VERSE_LINE" ? "py-0.5" : "py-2";
+function spacingClass(block: DiffBlock): string {
+  if (block.kind !== "VERSE_LINE") {
+    return "py-2";
+  }
+  return block.stanza_boundary === "NONE" ? "py-0.5" : "pt-6 pb-0.5";
+}
+
+/**
+ * A stanza break one witness has and the other does not.
+ *
+ * This changes no words, so nothing else on the page would show it. Without a
+ * mark here, dividing an octave into two quatrains reads as an unchanged poem.
+ */
+function stanzaChangeLabel(
+  block: DiffBlock,
+  side: "a" | "b" | "unified",
+): string | null {
+  if (block.stanza_boundary === "A_ONLY") {
+    return side === "b"
+      ? "Stanza break here in Manuscript A only."
+      : "Stanza break removed in Manuscript B.";
+  }
+  if (block.stanza_boundary === "B_ONLY") {
+    return side === "a"
+      ? "Stanza break here in Manuscript B only."
+      : "Stanza break added in Manuscript B.";
+  }
+  return null;
 }
 
 function structuralClass(block: DiffBlock): string {
+  if (
+    block.stanza_boundary === "A_ONLY" ||
+    block.stanza_boundary === "B_ONLY"
+  ) {
+    return "border-t-2 border-dashed border-moved";
+  }
+
   switch (block.status) {
     case "MOVED":
     case "SPLIT":
@@ -59,6 +93,8 @@ function relationshipLabel(block: DiffBlock, side: "a" | "b" | "unified"): strin
   const pane =
     side === "a" ? "Manuscript A" : side === "b" ? "Manuscript B" : "unified reading";
 
+  const stanza = stanzaChangeLabel(block, side);
+
   switch (block.status) {
     case "MOVED":
       return `${pane} block ${movementPhrase(block.move_distance)}.`;
@@ -67,7 +103,7 @@ function relationshipLabel(block: DiffBlock, side: "a" | "b" | "unified"): strin
     case "MERGED":
       return `${pane} block is part of merged group ${block.group_id ?? "without an id"}.`;
     default:
-      return null;
+      return stanza;
   }
 }
 
@@ -94,10 +130,11 @@ export function DiffBlockRow({
 
   return (
     <div
-      className={`flex scroll-mt-24 ${spacingClass(block.kind)} ${structuralClass(block)}`}
+      className={`flex scroll-mt-24 ${spacingClass(block)} ${structuralClass(block)}`}
       data-testid={`diff-block-row-${block.id}`}
       data-status={block.status}
       data-kind={block.kind}
+      data-stanza={block.stanza_boundary ?? undefined}
       data-group-id={block.group_id ?? undefined}
       id={side !== "a" ? `block-${side}-${block.id}` : undefined}
     >

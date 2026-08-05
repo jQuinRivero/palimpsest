@@ -114,10 +114,9 @@ test("verse lines are set closer together than paragraphs", async ({
   const id = await comparisonFor(request, STANZA, REVISED);
   await gotoComparison(page, `/c/${id}?view=unified`);
 
-  // Wait for a row to exist before measuring it, rather than assuming the
-  // render has landed. Reading computed style off a null element fails in a
-  // way that looks like a styling bug and is not one.
-  const row = page.locator('[data-kind="VERSE_LINE"]').first();
+  // A line that opens a stanza deliberately takes the gap back, so measure one
+  // inside the stanza instead.
+  const row = page.locator('[data-kind="VERSE_LINE"][data-stanza="NONE"]').first();
   await expect(row).toBeVisible();
 
   const paddingTop = await row.evaluate(
@@ -126,6 +125,21 @@ test("verse lines are set closer together than paragraphs", async ({
 
   // A poem set with paragraph spacing is double-spaced and loses its shape.
   expect(paddingTop).toBeLessThan(8);
+});
+
+test("a line opening a stanza takes the blank line back", async ({ page, request }) => {
+  const id = await comparisonFor(request, STANZA, REVISED);
+  await gotoComparison(page, `/c/${id}?view=unified`);
+
+  const opening = page.locator('[data-kind="VERSE_LINE"][data-stanza="SHARED"]').first();
+  await expect(opening).toBeVisible();
+
+  const paddingTop = await opening.evaluate(
+    (element) => parseFloat(window.getComputedStyle(element).paddingTop),
+  );
+
+  // The blank line between stanzas is part of the poem's form, not slack.
+  expect(paddingTop).toBeGreaterThan(8);
 });
 
 test("verse rendering has no accessibility violations", async ({ page, request }) => {
@@ -144,4 +158,46 @@ test("verse rendering has no accessibility violations", async ({ page, request }
       `${view}: ${results.violations.map((v) => `${v.id} (${v.nodes.length})`).join(", ")}`,
     ).toEqual([]);
   }
+});
+
+const OCTAVE = [
+  "Shall I compare thee to a summer's day?",
+  "Thou art more lovely and more temperate:",
+  "Rough winds do shake the darling buds of May,",
+  "And summer's lease hath all too short a date:",
+  "Sometime too hot the eye of heaven shines,",
+  "And often is his gold complexion dimm'd;",
+];
+
+const AS_ONE_STANZA = OCTAVE.join("\n");
+const AS_TWO_STANZAS = OCTAVE.slice(0, 3).join("\n") + "\n\n" + OCTAVE.slice(3).join("\n");
+
+test("dividing a poem into two stanzas is reported, though no word changes", async ({
+  page,
+  request,
+}) => {
+  // Without this the collation reported similarity 1.000 and no finding at
+  // all: the tool asserting that two formally different poems were the same.
+  const id = await comparisonFor(request, AS_ONE_STANZA, AS_TWO_STANZAS);
+  await gotoComparison(page, `/c/${id}?view=unified`);
+
+  const summary = page.getByTestId("diff-summary-bar");
+  await expect(summary).toContainText(/no wording changes/i);
+  await expect(summary).toContainText("1 stanza break changed");
+
+  // And the line where the break appears is marked, so the reader can see
+  // where it is rather than only that it exists.
+  await expect(page.locator('[data-stanza="B_ONLY"]')).toHaveCount(1);
+});
+
+test("a poem with matching stanzas reports no stanza change", async ({ page, request }) => {
+  const id = await comparisonFor(request, AS_TWO_STANZAS, AS_TWO_STANZAS);
+  await gotoComparison(page, `/c/${id}?view=unified`);
+
+  await expect(page.getByTestId("diff-summary-bar")).not.toContainText("stanza break");
+  await expect(page.locator('[data-stanza="A_ONLY"]')).toHaveCount(0);
+  await expect(page.locator('[data-stanza="B_ONLY"]')).toHaveCount(0);
+
+  // Stanza openings are still marked, which is what draws the gap.
+  await expect(page.locator('[data-stanza="SHARED"]')).toHaveCount(2);
 });

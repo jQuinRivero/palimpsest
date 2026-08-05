@@ -19,7 +19,10 @@ function plural(count: number, noun: string): string {
 export function DiffSummaryBar({ metrics }: { metrics: DiffMetrics }) {
   const unchanged = metrics.edit_count === 0;
   const structural =
-    metrics.blocks_moved + metrics.blocks_split + metrics.blocks_merged;
+    metrics.blocks_moved +
+    metrics.blocks_split +
+    metrics.blocks_merged +
+    metrics.stanza_breaks_changed;
 
   return (
     <div
@@ -51,6 +54,11 @@ export function DiffSummaryBar({ metrics }: { metrics: DiffMetrics }) {
             metrics.blocks_moved && plural(metrics.blocks_moved, "block") + " moved",
             metrics.blocks_split && plural(metrics.blocks_split, "block") + " split",
             metrics.blocks_merged && plural(metrics.blocks_merged, "block") + " merged",
+            // A stanza break changes no words at all, so without this line a
+            // poem re-divided between drafts reads as "No wording changes"
+            // and nothing else.
+            metrics.stanza_breaks_changed &&
+              plural(metrics.stanza_breaks_changed, "stanza break") + " changed",
           ]
             .filter(Boolean)
             .join(", ")}

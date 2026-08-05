@@ -20,7 +20,10 @@ import pytest
 
 from app.models import BlockKind, BlockStatus, SourceFormat, StanzaBoundary
 from app.services.formatting.payload import build_comparison
+from app.services.ingestion.base import DocumentSource
+from app.services.ingestion.markdown import MarkdownParser
 from app.services.ingestion.normalize import VERSE_WARNING, normalize
+from app.services.ingestion.plaintext import PlainTextParser
 
 SONNET = (
     "Shall I compare thee to a summer's day?\n"
@@ -334,3 +337,86 @@ class TestStanzaBoundaries:
             BlockStatus.UNCHANGED,
         ]
         assert result.metrics.blocks_moved == 0
+
+
+class TestFormatDoesNotChangeTheFinding:
+    """The same poem must collate the same however it was typed.
+
+    Markdown used to join a paragraph's lines with a space, on the reasoning
+    that CommonMark renders a soft break as a space. This is not a renderer:
+    the line breaks an author typed are evidence about the text, and joining
+    them made the same sonnet read as four verse lines from a .txt file and a
+    single paragraph from a .md file — which then collated as four MERGED
+    blocks, a structural revision nobody made.
+    """
+
+    def markdown(self, text: str):
+        raw = text.encode("utf-8")
+        return MarkdownParser().parse(
+            DocumentSource(
+                filename="poem.md",
+                media_type="text/markdown",
+                size_bytes=len(raw),
+                data=raw,
+            )
+        )
+
+    def plaintext(self, text: str):
+        raw = text.encode("utf-8")
+        return PlainTextParser().parse(
+            DocumentSource(
+                filename="poem.txt",
+                media_type="text/plain",
+                size_bytes=len(raw),
+                data=raw,
+            )
+        )
+
+    def test_markdown_reads_verse_as_verse(self) -> None:
+        document = self.markdown(SONNET)
+
+        assert [block.kind for block in document.blocks] == [BlockKind.VERSE_LINE] * 4
+
+    def test_the_same_poem_in_two_formats_collates_as_unchanged(self) -> None:
+        result = build_comparison(self.plaintext(SONNET), self.markdown(SONNET))
+
+        assert [block.status for block in result.blocks] == [BlockStatus.UNCHANGED] * 4
+        assert result.metrics.edit_count == 0
+        # The finding that used to appear here, and should not: a file format
+        # is not a revision.
+        assert result.metrics.blocks_merged == 0
+        assert result.metrics.blocks_split == 0
+
+    def test_wrapped_markdown_prose_is_still_one_block(self) -> None:
+        """Preserving line breaks must not shred hard-wrapped prose."""
+        wrapped = (
+            "It is a truth universally acknowledged, that a single man in\n"
+            "possession of a good fortune, must be in want of a wife. However\n"
+            "little known the feelings or views of such a man may be on his\n"
+            "first entering a neighbourhood, this truth is so well fixed."
+        )
+        document = self.markdown(wrapped)
+
+        assert [block.kind for block in document.blocks] == [BlockKind.PARAGRAPH]
+
+    def test_wrapped_prose_compares_equal_across_formats(self) -> None:
+        """Line breaks are kept, so they must not become differences."""
+        wrapped = (
+            "It is a truth universally acknowledged, that a single man in\n"
+            "possession of a good fortune, must be in want of a wife. However\n"
+            "little known the feelings or views of such a man may be."
+        )
+        unwrapped = " ".join(line.strip() for line in wrapped.split("\n"))
+
+        result = build_comparison(self.markdown(wrapped), self.plaintext(unwrapped))
+
+        assert result.metrics.edit_count == 0
+
+    def test_inline_formatting_is_still_stripped(self) -> None:
+        document = self.markdown("A **bold** claim here.\nAnd an *emphatic* one.")
+
+        text = " ".join(block.text for block in document.blocks)
+        assert "**" not in text
+        assert "*" not in text
+        assert "bold" in text
+        assert "emphatic" in text

@@ -128,7 +128,15 @@ def _parse_blocks(text: str) -> tuple[list[NormalizationBlock], bool]:
         nonlocal inline_was_stripped
         if not paragraph_lines:
             return
-        stripped_text, stripped = _strip_inline_formatting(" ".join(paragraph_lines))
+        # Joined with a newline, not a space. CommonMark would render a soft
+        # break as a space, but this is not a renderer: the line breaks an
+        # author typed are evidence about the text, and normalization is the
+        # layer entitled to decide whether they are layout or meaning. It
+        # declines to reflow Markdown for exactly that reason, so joining here
+        # would fabricate the very thing that policy exists to avoid — and it
+        # made the same poem read as four verse lines from a .txt file and one
+        # paragraph from a .md file.
+        stripped_text, stripped = _strip_inline_formatting("\n".join(paragraph_lines))
         inline_was_stripped = inline_was_stripped or stripped
         blocks.append(NormalizationBlock(text=stripped_text, kind=BlockKind.PARAGRAPH))
         paragraph_lines.clear()

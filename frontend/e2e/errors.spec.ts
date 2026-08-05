@@ -27,6 +27,27 @@ async function chooseFile(
   await page.locator('input[type="file"]').first().setInputFiles(file);
 }
 
+async function dropFile(
+  page: import("@playwright/test").Page,
+  slot: "a" | "b",
+  file: { name: string; mimeType: string; contents: string },
+) {
+  // Deliberately a drop and not setInputFiles. Until capabilities arrive the
+  // file input and the browse button are disabled, so the only way a person
+  // can hand this component a file in that window is by dragging one onto the
+  // card — onDrop has no such guard. A test that drove the disabled input
+  // would be exercising a path no researcher can reach.
+  const dataTransfer = await page.evaluateHandle(
+    ({ name, mimeType, contents }) => {
+      const transfer = new DataTransfer();
+      transfer.items.add(new File([contents], name, { type: mimeType }));
+      return transfer;
+    },
+    file,
+  );
+  await page.getByTestId(`dropzone-${slot}`).dispatchEvent("drop", { dataTransfer });
+}
+
 test("the accepted formats are written for a person", async ({ page }) => {
   await page.goto("/");
 
@@ -79,10 +100,10 @@ test("the server's refusal names the file too", async ({ page }) => {
 
   await page.goto("/");
   await expect(page.locator(UPLOADER)).toBeVisible();
-  await page.locator('input[type="file"]').first().setInputFiles({
+  await dropFile(page, "a", {
     name: "photograph.png",
     mimeType: "image/png",
-    buffer: Buffer.from([0x89, 0x50, 0x4e, 0x47, 13, 10, 26, 10]),
+    contents: "\x89PNG\r\n\x1a\n",
   });
 
   const uploader = page.locator(UPLOADER);
@@ -135,7 +156,7 @@ test("a refusal is announced, not only shown", async ({ page }) => {
   await expect(announcement).toContainText("photograph.png");
 });
 
-test("a file chosen before the format list arrives is still uploaded", async ({ page }) => {
+test("a file dropped before the format list arrives is still uploaded", async ({ page }) => {
   // The local format check is a courtesy; the server is the authority. When
   // capabilities are slow, refusing here called a good manuscript an
   // UNSUPPORTED_FORMAT — which is not knowable yet — and discarded it, so the
@@ -148,10 +169,10 @@ test("a file chosen before the format list arrives is still uploaded", async ({ 
   await page.goto("/");
   await expect(page.locator(UPLOADER)).toBeVisible();
 
-  await page.locator('input[type="file"]').first().setInputFiles({
+  await dropFile(page, "a", {
     name: "witness.txt",
     mimeType: "text/plain",
-    buffer: Buffer.from("It was the best of times."),
+    contents: "It was the best of times.",
   });
 
   const uploader = page.locator(UPLOADER);

@@ -616,6 +616,7 @@ function WitnessCard({
       </div>
 
       <div
+        data-testid={`dropzone-${slotKey}`}
         onDragEnter={(event) => {
           event.preventDefault();
           if (capabilitiesReady && slot.state !== "uploading") onDragState(true);
@@ -654,7 +655,7 @@ function WitnessCard({
         {slot.state === "empty" ? (
           <EmptyState
             title={`Add ${slot.label}`}
-            message="Choose a text, Markdown, Word, or PDF witness from the formats this server advertises, or paste plain text below."
+            message="Choose a witness in any format this server advertises, or paste plain text below."
             actionLabel={`Browse for ${slot.label}`}
             onAction={onBrowse}
           />

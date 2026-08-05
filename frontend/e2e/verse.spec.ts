@@ -113,16 +113,18 @@ test("verse lines are set closer together than paragraphs", async ({
   const id = await comparisonFor(request, STANZA, REVISED);
   await page.goto(`/c/${id}?view=unified`);
 
-  const spacing = await page.evaluate(() => {
-    const row = document.querySelector('[data-kind="VERSE_LINE"]');
-    if (!row) return null;
-    const style = window.getComputedStyle(row);
-    return parseFloat(style.paddingTop);
-  });
+  // Wait for a row to exist before measuring it, rather than assuming the
+  // render has landed. Reading computed style off a null element fails in a
+  // way that looks like a styling bug and is not one.
+  const row = page.locator('[data-kind="VERSE_LINE"]').first();
+  await expect(row).toBeVisible();
 
-  expect(spacing).not.toBeNull();
+  const paddingTop = await row.evaluate(
+    (element) => parseFloat(window.getComputedStyle(element).paddingTop),
+  );
+
   // A poem set with paragraph spacing is double-spaced and loses its shape.
-  expect(spacing!).toBeLessThan(8);
+  expect(paddingTop).toBeLessThan(8);
 });
 
 test("verse rendering has no accessibility violations", async ({ page, request }) => {

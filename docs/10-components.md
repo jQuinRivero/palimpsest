@@ -82,18 +82,25 @@ export type SlotState = "empty" | "selected" | "uploading" | "uploaded" | "error
 
 Each witness has a drop zone labelled Manuscript A or Manuscript B. The drop zone supports drag-and-drop, click-to-browse, and paste-text. Pasted text is treated as a `TXT` witness with a generated title; the user still sees it as Manuscript A or Manuscript B.
 
-Validation happens before upload begins:
+Validation before upload is a courtesy, not a gate. The server re-checks format and size on every upload and is the sole authority on both; the client checks early only so nobody waits on a request that cannot succeed.
 
 1. Fetch `GET /api/v1/capabilities`.
-2. Compare the candidate extension, media type, and size to the returned accept list and limits.
+2. When capabilities are available, compare the candidate extension, media type, and size to the returned accept list and limits.
 3. If the candidate is too large, keep the slot in `selected` or `error` and show size-limit feedback before any network request.
-4. If the candidate is a format that requires OCR, display the `OCR_REQUIRED` problem as: "This witness appears to require OCR before it can be compared. Export searchable text, upload a text-based PDF, or enable the OCR parser when it becomes available."
-5. Upload accepted witnesses to `POST /api/v1/documents`, one per slot, showing per-file progress.
-6. Render any `IngestionWarning` values returned on the `DocumentSummary` under the relevant witness.
-7. Enable the compare action only when both slots are `uploaded`.
-8. Submit `{a_document_id, b_document_id, options?}` to `POST /api/v1/comparisons`.
-9. On `201 ComparisonResult`, route to `/c/[comparisonId]`, concretely `/c/<comparison.comparison_id>`, and optionally call `onComparisonCreated`.
-10. On `202 ComparisonAccepted`, route to `/c/[comparisonId]`, concretely `/c/<comparison_id>`, if the response includes it and call `onAccepted`.
+4. When capabilities have **not** arrived yet, upload anyway and let the server answer. The component must not refuse a file for a rule it has not been told. Refusing with `UNSUPPORTED_FORMAT` in this window is specifically forbidden: nothing has inspected the file, the claim may be false, and discarding the selection forces the researcher to choose it again. A drop is reachable in this window even though the file input and browse button are disabled, because `onDrop` is not gated.
+5. If the candidate is a format that requires OCR, display the `OCR_REQUIRED` problem as: "This witness appears to require OCR before it can be compared. Export searchable text, upload a text-based PDF, or enable the OCR parser when it becomes available."
+6. Upload accepted witnesses to `POST /api/v1/documents`, one per slot, showing per-file progress.
+7. Render any `IngestionWarning` values returned on the `DocumentSummary` under the relevant witness.
+8. Enable the compare action only when both slots are `uploaded`.
+9. Submit `{a_document_id, b_document_id, options?}` to `POST /api/v1/comparisons`.
+10. On `201 ComparisonResult`, route to `/c/[comparisonId]`, concretely `/c/<comparison.comparison_id>`, and optionally call `onComparisonCreated`.
+11. On `202 ComparisonAccepted`, route to `/c/[comparisonId]`, concretely `/c/<comparison_id>`, if the response includes it and call `onAccepted`.
+
+Because either authority may refuse, and which one does is a race whenever capabilities are slow, a refusal must read the same either way. The server's message is about parsers rather than about this upload and names no file, so the component supplies the filename itself rather than relying on the message to carry it.
+
+### Accepted formats copy
+
+The sentence naming accepted formats is prose written for a researcher, derived from `GET /api/v1/capabilities` and never hardcoded. It must not render the `accept` attribute, which is a comma-joined list of extensions and media types built for the file picker and unreadable as text. Formats are named once each even when several parsers read the same one, and a format with no human label falls back to its extensions so that registering a new parser needs no change here. No other part of the component may state its own list of formats.
 
 The swap affordance exchanges the two slots before comparison creation. It must swap selected files, uploaded `DocumentSummary` values, warnings, progress, and errors together so Manuscript A and Manuscript B remain semantically correct.
 
@@ -104,19 +111,19 @@ The swap affordance exchanges the two slots before comparison creation. It must 
 | Drop zones | Keyboard-focusable buttons or labelled regions with clear names: "Upload Manuscript A" and "Upload Manuscript B". |
 | Progress | Per-witness progress uses `role="progressbar"` with `aria-valuenow`, `aria-valuemin="0"`, and `aria-valuemax="100"`. |
 | Warnings | `IngestionWarning` lists are associated with the witness via `aria-describedby`. |
-| Errors | Problem details are announced in a polite live region; `OCR_REQUIRED` uses the specific message above. |
+| Errors | Problem details are announced in a polite live region; `OCR_REQUIRED` uses the specific message above. The announcement is self-contained: it names the witness and the file, because a listener has only that sentence while a reader also has the card. |
 | Swap | The swap control is a button labelled "Swap Manuscript A and Manuscript B". |
 
 ### Edge, empty, and error states
 
 | State | Rendering |
 |---|---|
-| No capabilities yet | Disable browse controls, show a loading message, and do not guess accepted formats. |
+| No capabilities yet | Disable the file input, browse, and paste controls, show a loading message, and do not guess accepted formats. A file dropped in this window is still uploaded and answered by the server; it is never refused locally. |
 | `empty` | Show `EmptyState` with upload and paste guidance. |
 | `selected` | Show title, size, detected type if available, and a replace action. |
 | `uploading` | Disable replacement for that witness, show progress, and allow cancelling the upload. |
 | `uploaded` | Show `DocumentSummary.metadata.word_count`, `DocumentSummary.metadata.block_count`, parser name, and warnings. |
-| `error` | Show the RFC 9457 `title`, `detail`, and `code`, with `OCR_REQUIRED` handled specifically. |
+| `error` | Show the RFC 9457 `title`, `detail`, and `code`, plus the filename, with `OCR_REQUIRED` handled specifically. |
 
 ### Design tokens consumed
 

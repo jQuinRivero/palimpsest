@@ -172,7 +172,11 @@ Playwright covers the researcher journey:
 5. Deep-link to `?view=unified&block=<index>` and verify focus lands on the intended `DiffBlockRow`.
 6. Toggle `?moves=off` and verify move-specific rendering changes without losing token diffs.
 
-End-to-end tests use small public-domain fixtures so they remain fast enough to run with ordinary PR validation.
+Refusals are part of the journey and are asserted from the browser, not only as API status codes. A correct status code reaching a client that says nothing useful about it is a defect the backend suite cannot see. Every refusal a researcher can provoke — unsupported format, empty witness, `OCR_REQUIRED`, an upload chosen before capabilities arrive — is checked for the words shown, the filename, the error code, and the screen-reader announcement.
+
+End-to-end tests must reach their subject through an affordance a researcher actually has. Playwright can drive a disabled control, so a test that does is not evidence the path works; where the interesting window is one in which controls are disabled, the test drives the affordance that is not — for the uploader, a real drop with a real `DataTransfer`.
+
+End-to-end tests use small public-domain fixtures so they remain fast enough to run with ordinary PR validation. Fixtures whose point is the absence of something — a PDF with no text layer, standing in for a scan — are built in the spec rather than committed as binaries, so a reviewer can see the absence in the source.
 
 ### Accessibility tests
 

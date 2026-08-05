@@ -38,6 +38,7 @@ frontend/
     ChangeGutter.tsx           # Block ordinals and block-level change markers.
     ChangeNavigator.tsx        # Next/previous change controls and their announcements.
     LoadingProgress.tsx        # Honest reporting while a windowed comparison loads.
+    ComparisonPending.tsx      # Waiting page for a comparison the server accepted but has not finished.
     BlockConnector.tsx         # Visual connector for aligned block pairs and moves.
     EmptyState.tsx             # Helpful state for no upload, no changes, or expired links.
   lib/
@@ -47,6 +48,7 @@ frontend/
       useBlockNavigation.ts    # Active block and next/previous change navigation.
       useWindowedBlocks.ts     # Loads the remaining windows of a truncated comparison.
       usePrintAll.ts           # Suspends virtualization while the browser prints.
+    waitForComparison.ts       # Bounded, jittered polling for an accepted comparison.
   styles/
     globals.css                # Tailwind v4 import, `@theme` tokens, base document styles.
 ```
@@ -159,7 +161,17 @@ TypeScript types mirror the Pydantic models in [Data schema](./05-data-schema.md
 
 Errors use the RFC 9457 `application/problem+json` shape from [API reference](./06-api-reference.md): `type`, `title`, `status`, `detail`, and `code`. `lib/api.ts` should parse that shape into a typed application error and preserve the backend `code`, including `COMPARISON_NOT_FOUND`, `COMPARISON_EXPIRED`, `DIFF_BUDGET_EXCEEDED`, and `RATE_LIMITED`.
 
-`POST /api/v1/comparisons` may return `202` with an accepted comparison. The uploader enters a polling path with bounded exponential backoff and jitter, displays progress copy that does not promise completion timing, and stops cleanly on terminal `problem+json` errors. Because polling completes before the redirect, the viewer route always loads a finished comparison. `error.tsx` handles rendering and data exceptions; `not-found.tsx` handles unknown or expired artifacts; server fetch latency is absorbed by the server render itself rather than by a route-level loading state.
+`POST /api/v1/comparisons` may return `202` with an accepted comparison. `202` is a success status, so a client that checks only `response.ok` receives a `ComparisonAccepted` — which carries no blocks and no metrics — while believing it holds a `ComparisonResult`. `getComparison` and `createComparison` therefore return a discriminated outcome rather than a bare result: the pending branch has no `comparison` to reach for, so the question cannot be skipped by accident.
+
+Two places wait, because there are two ways to arrive at a pending comparison.
+
+The **uploader** polls with bounded exponential backoff and full jitter, displays progress copy that does not promise completion timing, and stops cleanly on terminal `problem+json` errors. Jitter matters because several researchers submitting large manuscripts at once would otherwise poll in lockstep.
+
+The **viewer route** renders a waiting page when it finds a pending comparison, then polls and refreshes itself into the collation with no reload. It is not enough for the uploader to wait: a comparison URL is the shareable artifact, so a colleague opening the link — or the researcher refreshing it — reaches the route directly while the collation is still running. Rendering a comparison that has no blocks yet is how that path returned a `500`.
+
+The wait is client-side in both cases. Holding a server response open for minutes would give the reader a blank tab and no way to tell a slow collation from a hung one.
+
+`error.tsx` handles rendering and data exceptions; `not-found.tsx` handles unknown or expired artifacts; server fetch latency for a finished comparison is absorbed by the server render itself rather than by a route-level loading state.
 
 ## State management
 

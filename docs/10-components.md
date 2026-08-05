@@ -40,7 +40,7 @@ The gutter shows block ordinals from `a_index` and `b_index`. These are not rend
 
 | Convention | Requirement |
 |---|---|
-| Client boundary | `ManuscriptUploader`, `DiffViewer`, `VirtualizedSynopticView`, `VirtualizedUnifiedView`, `DiffSummaryBar`, `DiffBlockRow`, `TokenSpan`, `ChangeGutter`, `ChangeNavigator`, `LoadingProgress`, `ViewModeToggle`, `BlockConnector`, and `EmptyState` are client components because they read browser input, URL state, focus state, measured layout, or scroll position. |
+| Client boundary | `ManuscriptUploader`, `DiffViewer`, `VirtualizedSynopticView`, `VirtualizedUnifiedView`, `DiffSummaryBar`, `DiffBlockRow`, `TokenSpan`, `ChangeGutter`, `ChangeNavigator`, `LoadingProgress`, `ComparisonPending`, `ViewModeToggle`, `BlockConnector`, and `EmptyState` are client components because they read browser input, URL state, focus state, measured layout, or scroll position. |
 | Naming | Public props use `comparisonId`, `comparison`, `blocks`, `metrics`, `options`, `a`, `b`, `a_index`, and `b_index` only where those names mirror the contract. UI text always says Manuscript A and Manuscript B, never positional pane labels. |
 | Memoization | `TokenSpan` is memoized by `text`, `status`, and announcement mode. `DiffBlockRow` is memoized by `DiffBlock.id`, pane, expansion state, and focus state. Handlers passed into virtualized rows are stable callbacks. |
 | DOM discipline | A 100,000-word manuscript can produce about 120,000 word tokens per witness before payload run-coalescing. A payload `Token` is a contiguous run, not necessarily one word. Rows render only the current virtual window and must never compute metrics by counting `Token` array entries. |
@@ -257,6 +257,31 @@ Navigation must go through `scrollToBlock` rather than querying the DOM: a row o
 `VirtualizedUnifiedView` renders unified view: one `react-virtuoso` list of `DiffBlockRow` in `unified` mode, at `--measure-prose`. It shares `BlockListHandle`, the overscan constant, and the `renderAll` print behaviour with `VirtualizedSynopticView`; only the row renderer differs.
 
 Both views must stay within the mounted-row budget in [Performance and scale](./11-performance-and-scale.md) at any manuscript length. That is a property of the component, not of the payload: the client loads every block of a windowed comparison, so nothing upstream limits how many rows a naive view would mount.
+
+## ComparisonPending
+
+`ComparisonPending` is the waiting page for a comparison the server has accepted but not finished.
+
+It exists because the comparison URL is the shareable artifact. The uploader waits before navigating, but a colleague opening the link — or the researcher refreshing it — reaches `/c/[comparisonId]` directly while the collation is still running. Rendering a comparison that has no blocks yet is how that path returned a `500`.
+
+### Props
+
+```ts
+export interface ComparisonPendingProps {
+  comparisonId: string;
+  retryAfter: number;   // seconds, from the server's ComparisonAccepted
+}
+```
+
+### Requirements
+
+| Concern | Requirement |
+|---|---|
+| Copy | States that the collation is running and that the link keeps working. It must not estimate a completion time: the server does not predict one, so the interface would be inventing it. |
+| Polling | Delegates to `waitForComparison` — bounded exponential backoff with full jitter, seeded from `retry_after`. Aborts on unmount. |
+| Arrival | Calls `router.refresh()` rather than reloading, so the server component re-runs and renders the finished comparison in place. |
+| Failure | A terminal error is shown, not swallowed. Polling past a comparison the server has given up on would leave the reader watching a spinner indefinitely. |
+| Announcement | The waiting copy sits in a polite live region; the failure message is an alert. |
 
 ## LoadingProgress
 

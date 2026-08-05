@@ -90,11 +90,13 @@ frontend/
     ChangeGutter.tsx
     ChangeNavigator.tsx
     LoadingProgress.tsx
+    ComparisonPending.tsx
     BlockConnector.tsx
     EmptyState.tsx
   lib/
     api.ts
     types.ts
+    waitForComparison.ts
     hooks/
       useBlockNavigation.ts
       useWindowedBlocks.ts
@@ -105,12 +107,13 @@ frontend/
 |---|---|
 | `frontend/app/page.tsx` | Upload route `/`, centered on `ManuscriptUploader`. |
 | `frontend/app/c/[comparisonId]/page.tsx` | Viewer route `/c/[comparisonId]`, loading and rendering a `ComparisonResult`. |
-| `frontend/components/` | `ManuscriptUploader`, `DiffViewer`, `VirtualizedSynopticView`, `VirtualizedUnifiedView`, `DiffSummaryBar`, `DiffBlockRow`, `TokenSpan`, `ChangeGutter`, `ChangeNavigator`, `LoadingProgress`, `BlockConnector`, and `EmptyState`. `ViewModeToggle` is a private component inside `DiffViewer.tsx`, not a separate module: it is three buttons with no state of its own and no second consumer. |
+| `frontend/components/` | `ManuscriptUploader`, `DiffViewer`, `VirtualizedSynopticView`, `VirtualizedUnifiedView`, `DiffSummaryBar`, `DiffBlockRow`, `TokenSpan`, `ChangeGutter`, `ChangeNavigator`, `LoadingProgress`, `ComparisonPending`, `BlockConnector`, and `EmptyState`. `ViewModeToggle` is a private component inside `DiffViewer.tsx`, not a separate module: it is three buttons with no state of its own and no second consumer. |
 | `frontend/lib/api.ts` | Thin API client for `/api/v1` endpoints. |
 | `frontend/lib/types.ts` | TypeScript mirror of the JSON payload contract from [Data schema](./05-data-schema.md). |
 | `frontend/lib/hooks/useBlockNavigation.ts` | Active block, next/previous change traversal, focus, and the `?block=<index>` deep link. |
 | `frontend/lib/hooks/useWindowedBlocks.ts` | Loading the remaining windows of a truncated comparison, and reporting honest progress while it does. |
 | `frontend/lib/hooks/usePrintAll.ts` | Suspending virtualization while the browser prints, so paper receives the whole collation rather than the mounted window. |
+| `frontend/lib/waitForComparison.ts` | Bounded, jittered polling for a comparison the server accepted but has not finished. |
 
 URL state is read where it is used rather than centralized in a `url-state` module: `?view=` is resolved server-side in the viewer route, `?moves=` in `DiffViewer`, and `?block=` in `useBlockNavigation`. A shared module would have been a single import with three unrelated consumers.
 

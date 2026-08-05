@@ -69,6 +69,9 @@ async function openLoaded(page: import("@playwright/test").Page, view: string) {
     "complete",
     { timeout: 30_000 },
   );
+  // Hydrated is not the same as rendered: the virtualizer measures before it
+  // mounts anything, so counting rows any earlier counts zero.
+  await expect(page.locator('[data-testid^="diff-block-row-"]').first()).toBeVisible();
 }
 
 function rowCount(page: import("@playwright/test").Page) {
@@ -110,8 +113,7 @@ for (const view of ["synoptic", "unified"] as const) {
   });
 }
 
-test("unified navigation reaches a block outside the mounted window", async ({ page }) => {
-  // Unified was not virtualized, so navigation there relied on the block
+test("unified navigation reaches a block outside the mounted window", async ({ page }) => {  // Unified was not virtualized, so navigation there relied on the block
   // already being in the DOM. It now goes through the virtualizer like
   // synoptic, and this is what proves it.
   const target = totalBlocks - 3;
@@ -140,4 +142,32 @@ test("unified navigation reaches a block outside the mounted window", async ({ p
       { timeout: 15_000 },
     )
     .not.toBe(0);
+});
+
+test("a deep link waiting for its row does not steal focus the reader has moved", async ({
+  page,
+}) => {
+  // Focusing a deep-linked block waits for its row, because a virtualized row
+  // far down the document is not mounted on the first frame. That wait can
+  // still be outstanding when the reader has clicked into something else, and
+  // taking focus then is worse than never taking it: it drags them out of
+  // whatever they are doing, a moment after they chose it.
+  const target = totalBlocks - 3;
+
+  await page.goto(`/c/${comparisonId}?view=unified&block=${target}`);
+
+  await page.evaluate(() => {
+    const input = document.createElement("input");
+    input.setAttribute("aria-label", "Focus theft probe");
+    document.body.append(input);
+    input.focus();
+  });
+
+  // Longer than the retry budget, so every pending frame has run.
+  await page.waitForTimeout(1500);
+
+  await expect(page.locator(":focus")).toHaveAttribute(
+    "aria-label",
+    "Focus theft probe",
+  );
 });

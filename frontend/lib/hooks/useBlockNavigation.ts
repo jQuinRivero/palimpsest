@@ -161,6 +161,8 @@ export function useBlockNavigation(
     [pathname],
   );
 
+  const focusRequest = useRef(0);
+
   const focusBlock = useCallback((blockIndex: number) => {
     if (typeof window === "undefined") {
       return;
@@ -175,7 +177,28 @@ export function useBlockNavigation(
     // already there.
     let framesRemaining = FOCUS_ATTEMPT_FRAMES;
 
+    // Waiting for a row means this can still be pending when the reader has
+    // moved on. Taking focus then is worse than never taking it: it drags
+    // someone out of whatever they just clicked into, a moment after they
+    // chose it. So focus is only ever taken from nothing — the body — or from
+    // a block row this same mechanism focused earlier. Anything else is
+    // somewhere the reader deliberately is.
+    focusRequest.current += 1;
+    const request = focusRequest.current;
+
+    const mayTakeFocus = () => {
+      const active = document.activeElement;
+      if (active === null || active === document.body) {
+        return true;
+      }
+      return active.closest('[data-testid^="diff-block-row-"]') !== null;
+    };
+
     const attempt = () => {
+      if (request !== focusRequest.current || !mayTakeFocus()) {
+        return;
+      }
+
       const target = findBlockElement(blocks, blockIndex);
       if (!target) {
         framesRemaining -= 1;

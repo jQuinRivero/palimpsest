@@ -26,6 +26,12 @@ test.describe("changed block navigation", () => {
     const comparisonId = await createComparison(request, NAV_A, NAV_B);
 
     await page.goto(`/c/${comparisonId}?view=unified`);
+    // Visible is not the same as interactive: the viewer is server-rendered,
+    // so a click can land before its handler exists.
+    await expect(page.getByTestId("diff-viewer")).toHaveAttribute(
+      "data-hydrated",
+      "true",
+    );
     await expect(page.getByTestId("change-navigator")).toBeVisible();
 
     await page.getByRole("button", { name: /next changed block/i }).click();
@@ -58,6 +64,14 @@ test.describe("changed block navigation", () => {
     const comparisonId = await createComparison(request, NAV_A, NAV_B);
 
     await page.goto(`/c/${comparisonId}?view=unified`);
+    // The viewer is server-rendered, so it is on screen and looks ready before
+    // its keyboard bindings exist. Pressing a key in that window loses the
+    // keystroke with no error anywhere.
+    await expect(page.getByTestId("diff-viewer")).toHaveAttribute(
+      "data-hydrated",
+      "true",
+    );
+
     await page.keyboard.press("j");
     await expect.poll(() => currentBlockParameter(page)).toBe("1");
 

@@ -152,8 +152,19 @@ export function DiffViewer({
   };
 
   const readingRef = useRef<BlockListHandle | null>(null);
+  const rootRef = useRef<HTMLDivElement | null>(null);
   const nav = useBlockNavigation(blocks, initialBlockIndex, windowed.totalBlocks);
   const printAll = usePrintAll();
+
+  // Marks the point at which the keyboard bindings and click handlers are
+  // actually attached. The viewer is server-rendered, so it is visible and
+  // reads as ready well before any of it responds; a test — or a fast reader —
+  // pressing `j` in that window loses the keystroke silently. Set on the DOM
+  // rather than through state because nothing about the rendering depends on
+  // it, and a re-render for a test seam would be a poor trade.
+  useEffect(() => {
+    rootRef.current?.setAttribute("data-hydrated", "true");
+  }, []);
 
   // A virtualized row may never have been mounted, so scrolling to a block
   // must go through the virtualizer rather than through the DOM. Both reading
@@ -165,7 +176,12 @@ export function DiffViewer({
   }, [mode, nav.activeBlockIndex]);
 
   return (
-    <div data-testid="diff-viewer" data-view={mode} data-moves={movesEnabled ? "on" : "off"}>
+    <div
+      ref={rootRef}
+      data-testid="diff-viewer"
+      data-view={mode}
+      data-moves={movesEnabled ? "on" : "off"}
+    >
       <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
         <div className="font-ui text-sm text-ink-muted">
           <span className="text-ink">{comparison.a.title}</span>

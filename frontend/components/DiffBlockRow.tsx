@@ -10,7 +10,10 @@ function proseClass(kind: DiffBlock["kind"]): string {
     case "QUOTE":
       return "font-manuscript border-l-2 border-rule pl-4 italic text-ink";
     case "VERSE_LINE":
-      return "font-manuscript text-ink";
+      // Hanging indent. A verse line too long for the measure must wrap in a
+      // way the reader cannot mistake for a line break, because in poetry the
+      // line break is the meaning and a false one misreads the poem.
+      return "font-manuscript text-ink pl-6 -indent-6";
     case "LIST_ITEM":
       return "font-manuscript text-ink";
     case "ARTIFACT":
@@ -18,6 +21,17 @@ function proseClass(kind: DiffBlock["kind"]): string {
     default:
       return "font-manuscript text-ink";
   }
+}
+
+/**
+ * Vertical rhythm.
+ *
+ * Verse lines are lines of one poem, not consecutive paragraphs. Giving each
+ * the spacing of a paragraph sets a stanza double-spaced and destroys its
+ * shape on the page.
+ */
+function spacingClass(kind: DiffBlock["kind"]): string {
+  return kind === "VERSE_LINE" ? "py-0.5" : "py-2";
 }
 
 function structuralClass(block: DiffBlock): string {
@@ -80,9 +94,10 @@ export function DiffBlockRow({
 
   return (
     <div
-      className={`flex scroll-mt-24 py-2 ${structuralClass(block)}`}
+      className={`flex scroll-mt-24 ${spacingClass(block.kind)} ${structuralClass(block)}`}
       data-testid={`diff-block-row-${block.id}`}
       data-status={block.status}
+      data-kind={block.kind}
       data-group-id={block.group_id ?? undefined}
       id={side !== "a" ? `block-${side}-${block.id}` : undefined}
     >

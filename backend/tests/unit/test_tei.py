@@ -15,9 +15,10 @@ import xml.etree.ElementTree as ET
 
 import pytest
 
-from app.models import BlockKind, BlockStatus, DiffOptions
+from app.models import BlockKind, BlockStatus, DiffOptions, SourceFormat
 from app.services.formatting.payload import build_comparison
 from app.services.formatting.tei import build_tei
+from app.services.ingestion.normalize import normalize
 from tests.unit.test_payload import make_document
 
 TEI = "http://www.tei-c.org/ns/1.0"
@@ -32,6 +33,30 @@ def tei_for(a: list[str], b: list[str], **kwargs: object) -> tuple[str, ET.Eleme
     )
     document = build_tei(comparison)
     return document, ET.fromstring(document)
+
+
+def verse_comparison(a_text: str, b_text: str):
+    """Collate two verse witnesses through the real segmentation pipeline."""
+    return build_comparison(
+        normalize(
+            a_text,
+            document_id="doc_a",
+            title="A",
+            source_format=SourceFormat.TXT,
+            parser_name="test",
+            parser_version="1",
+            witness="a",
+        ),
+        normalize(
+            b_text,
+            document_id="doc_b",
+            title="B",
+            source_format=SourceFormat.TXT,
+            parser_name="test",
+            parser_version="1",
+            witness="b",
+        ),
+    )
 
 
 def reading(element: ET.Element, witness: str) -> str:
@@ -219,6 +244,24 @@ class TestStructure:
         assert body is not None
 
         assert [child.tag for child in body] == [f"{{{TEI}}}lg", f"{{{TEI}}}p"]
+
+    def test_each_stanza_is_its_own_line_group(self) -> None:
+        """One group per stanza, not one per contiguous run of verse.
+
+        ADR-0006 had to settle for the latter because the payload carried no
+        stanza membership. ADR-0007 supplied it, so a two-stanza poem must now
+        export as two line groups rather than one.
+        """
+        lines = ["Alpha the first line.", "Beta the second line.", "Gamma the third."]
+        stanzas = f"{lines[0]}\n{lines[1]}\n{lines[2]}\n\n{lines[0]}\n{lines[1]}\n{lines[2]}"
+
+        root = ET.fromstring(build_tei(verse_comparison(stanzas, stanzas)))
+        body = root.find("t:text/t:body", NS)
+        assert body is not None
+
+        groups = [child for child in body if child.tag == f"{{{TEI}}}lg"]
+        assert len(groups) == 2
+        assert all(len(group) == 3 for group in groups)
 
 
 class TestStructuralRelations:

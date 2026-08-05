@@ -70,6 +70,10 @@ class Block(BaseModel):
     #: Half-open offsets into the document's reconstructed full text.
     char_start: int
     char_end: int
+    #: True when this block opens a stanza. Set during verse segmentation,
+    #: which is the only point at which the blank line between stanzas still
+    #: exists; false for prose, which does not begin stanzas. See ADR-0007.
+    starts_stanza: bool = False
     #: Reserved for OCR; null for every v1 parser.
     confidence: float | None = None
     bbox: BoundingBox | None = None

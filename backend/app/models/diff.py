@@ -52,6 +52,25 @@ class Granularity(StrEnum):
     CHARACTER = "CHARACTER"
 
 
+class StanzaBoundary(StrEnum):
+    """What the two witnesses say about a stanza break at this position.
+
+    ``A_ONLY`` and ``B_ONLY`` are the finding: a break present in one witness
+    and absent in the other. Dividing an octave into two quatrains changes no
+    words at all, so without this the collation reports two formally different
+    poems as identical. See ADR-0007.
+    """
+
+    #: Neither witness begins a stanza here.
+    NONE = "NONE"
+    #: Both witnesses begin a stanza here.
+    SHARED = "SHARED"
+    #: Manuscript A begins a stanza here and Manuscript B does not.
+    A_ONLY = "A_ONLY"
+    #: Manuscript B begins a stanza here and Manuscript A does not.
+    B_ONLY = "B_ONLY"
+
+
 class Token(BaseModel):
     """A contiguous run of same-status words.
 
@@ -110,6 +129,10 @@ class DiffBlock(BaseModel):
     move_distance: int | None
     #: Shared by every member of a SPLIT or MERGED group.
     group_id: str | None
+    #: Non-null if and only if kind is VERSE_LINE, following the same
+    #: convention as move_distance and group_id: present exactly where it
+    #: means something.
+    stanza_boundary: StanzaBoundary | None
 
 
 class DiffMetrics(BaseModel):
@@ -122,6 +145,10 @@ class DiffMetrics(BaseModel):
     blocks_moved: int
     blocks_split: int
     blocks_merged: int
+    #: Stanza breaks present in one witness and absent in the other. Counted
+    #: over the whole comparison, so the summary stays true when blocks are
+    #: windowed.
+    stanza_breaks_changed: int
     a_word_count: int
     b_word_count: int
 

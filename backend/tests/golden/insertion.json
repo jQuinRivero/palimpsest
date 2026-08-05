@@ -83,7 +83,8 @@
         "churn": 0.0959
       },
       "move_distance": null,
-      "group_id": null
+      "group_id": null,
+      "stanza_boundary": null
     }
   ],
   "metrics": {
@@ -96,6 +97,7 @@
     "blocks_moved": 0,
     "blocks_split": 0,
     "blocks_merged": 0,
+    "stanza_breaks_changed": 0,
     "a_word_count": 33,
     "b_word_count": 40
   },

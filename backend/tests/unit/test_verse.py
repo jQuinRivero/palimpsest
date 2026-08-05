@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import pytest
 
-from app.models import BlockKind, BlockStatus, SourceFormat
+from app.models import BlockKind, BlockStatus, SourceFormat, StanzaBoundary
 from app.services.formatting.payload import build_comparison
 from app.services.ingestion.normalize import VERSE_WARNING, normalize
 
@@ -200,7 +200,77 @@ class TestParserSuppliedKindsAreRespected:
         assert kinds(document) == [kind]
 
 
-class TestVerseAlignment:
+class TestStanzaBoundaries:
+    """A stanza break is a formal revision that changes no words.
+
+    Before these, dividing an octave into two quatrains produced similarity
+    1.000 and no finding of any kind — the tool asserting that two formally
+    different poems were the same. See ADR-0007.
+    """
+
+    OCTAVE = "\n".join(
+        [
+            "Shall I compare thee to a summer's day?",
+            "Thou art more lovely and more temperate:",
+            "Rough winds do shake the darling buds of May,",
+            "And summer's lease hath all too short a date:",
+            "Sometime too hot the eye of heaven shines,",
+            "And often is his gold complexion dimm'd;",
+        ]
+    )
+
+    @property
+    def two_stanzas(self) -> str:
+        lines = self.OCTAVE.split("\n")
+        return "\n".join(lines[:3]) + "\n\n" + "\n".join(lines[3:])
+
+    def test_only_the_first_line_of_a_stanza_starts_one(self) -> None:
+        document = parse(self.two_stanzas)
+
+        assert [block.starts_stanza for block in document.blocks] == [
+            True,
+            False,
+            False,
+            True,
+            False,
+            False,
+        ]
+
+    def test_prose_never_starts_a_stanza(self) -> None:
+        document = parse("An ordinary paragraph.\n\nAnd a second one.")
+
+        assert all(not block.starts_stanza for block in document.blocks)
+
+    def test_an_added_break_is_reported_without_any_edit(self) -> None:
+        result = compare(self.OCTAVE, self.two_stanzas)
+
+        assert result.metrics.edit_count == 0
+        assert result.metrics.stanza_breaks_changed == 1
+
+        boundaries = [block.stanza_boundary for block in result.blocks]
+        assert boundaries[0] is StanzaBoundary.SHARED
+        assert boundaries[3] is StanzaBoundary.B_ONLY
+        assert boundaries.count(StanzaBoundary.B_ONLY) == 1
+
+    def test_a_removed_break_is_reported_from_the_other_side(self) -> None:
+        result = compare(self.two_stanzas, self.OCTAVE)
+
+        assert result.metrics.stanza_breaks_changed == 1
+        assert result.blocks[3].stanza_boundary is StanzaBoundary.A_ONLY
+
+    def test_matching_stanzas_report_no_change(self) -> None:
+        result = compare(self.two_stanzas, self.two_stanzas)
+
+        assert result.metrics.stanza_breaks_changed == 0
+        assert result.blocks[0].stanza_boundary is StanzaBoundary.SHARED
+        assert result.blocks[1].stanza_boundary is StanzaBoundary.NONE
+
+    def test_prose_carries_no_boundary_at_all(self) -> None:
+        """Non-null exactly where it means something, like move_distance."""
+        result = compare("A plain paragraph here.", "A plain paragraph there.")
+
+        assert all(block.stanza_boundary is None for block in result.blocks)
+
     """What line-level blocks actually buy the reader.
 
     Each of these was impossible before segmentation, because the whole stanza

@@ -13,6 +13,7 @@ from app.models.diff import (
     ComparisonResult,
     DiffBlock,
     DiffOptions,
+    StanzaBoundary,
     Token,
     TokenStatus,
 )
@@ -112,6 +113,36 @@ def _distribute(
     return members
 
 
+def _stanza_boundary(
+    kind: BlockKind,
+    a_blocks: list[Block],
+    b_blocks: list[Block],
+    a_index: int | None,
+    b_index: int | None,
+) -> StanzaBoundary | None:
+    """What the two witnesses say about a stanza break at this line.
+
+    Non-null only for verse, following ``move_distance`` and ``group_id``:
+    present exactly where it means something. ``A_ONLY`` and ``B_ONLY`` are the
+    finding — a break in one witness and not the other changes no words, so
+    without it a poem re-divided between drafts reads as identical. See
+    ADR-0007.
+    """
+    if kind is not BlockKind.VERSE_LINE:
+        return None
+
+    a_starts = a_index is not None and a_blocks[a_index].starts_stanza
+    b_starts = b_index is not None and b_blocks[b_index].starts_stanza
+
+    if a_starts and b_starts:
+        return StanzaBoundary.SHARED
+    if a_starts:
+        return StanzaBoundary.A_ONLY
+    if b_starts:
+        return StanzaBoundary.B_ONLY
+    return StanzaBoundary.NONE
+
+
 def _group_blocks(
     alignment: Alignment,
     a_blocks: list[Block],
@@ -180,6 +211,13 @@ def _group_blocks(
                 ),
                 move_distance=None,
                 group_id=gid,
+                stanza_boundary=_stanza_boundary(
+                    _kind_for(alignment, a_blocks, b_blocks),
+                    a_blocks,
+                    b_blocks,
+                    a_index,
+                    b_index,
+                ),
             )
         )
     return emitted
@@ -240,6 +278,13 @@ def build_diff_blocks(
                 metrics=block_metrics(tokens, a_text, b_text, status=status),
                 move_distance=alignment.move_distance,
                 group_id=None,
+                stanza_boundary=_stanza_boundary(
+                    _kind_for(alignment, a_blocks, b_blocks),
+                    a_blocks,
+                    b_blocks,
+                    alignment.a_index,
+                    alignment.b_index,
+                ),
             )
         )
         sequence += 1

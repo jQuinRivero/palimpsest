@@ -21,6 +21,7 @@ from app.models.diff import (
     Token,
     TokenStatus,
 )
+from app.models.document import BlockKind
 
 
 class InvariantViolation(AssertionError):
@@ -127,6 +128,8 @@ def check_block(block: DiffBlock, *, options: DiffOptions | None = None) -> list
         errors.append(f"{ref}: move_distance is non-null iff MOVED violated")
     if (block.group_id is not None) != (block.status in (BlockStatus.SPLIT, BlockStatus.MERGED)):
         errors.append(f"{ref}: group_id is non-null iff SPLIT/MERGED violated")
+    if (block.stanza_boundary is not None) != (block.kind is BlockKind.VERSE_LINE):
+        errors.append(f"{ref}: stanza_boundary is non-null iff VERSE_LINE violated")
 
     return errors
 

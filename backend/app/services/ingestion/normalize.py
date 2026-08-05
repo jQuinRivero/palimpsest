@@ -45,6 +45,7 @@ class NormalizationBlock:
     style: str | None = None
     page: int | None = None
     confidence: float | None = None
+    starts_stanza: bool = False
 
 
 def normalize(
@@ -87,6 +88,7 @@ def normalize(
                 style=block.style,
                 page=block.page,
                 confidence=block.confidence,
+                starts_stanza=block.starts_stanza,
             )
             for block in source.blocks
         ]
@@ -136,7 +138,7 @@ def normalize(
                 # blocks, never inside one.
                 verse_passages += 1
                 verse_line_count += len(lines)
-                for line in lines:
+                for position, line in enumerate(lines):
                     normalized_blocks.append(
                         NormalizationBlock(
                             text=line,
@@ -144,6 +146,13 @@ def normalize(
                             style=candidate.style,
                             page=candidate.page,
                             confidence=candidate.confidence,
+                            # The candidate is one stanza, because candidates
+                            # are separated by blank lines. Its first line is
+                            # therefore where the stanza begins, and this is
+                            # the last point at which that is knowable — after
+                            # segmentation the blank line is gone. See
+                            # ADR-0007.
+                            starts_stanza=position == 0,
                         )
                     )
                 continue
@@ -202,6 +211,7 @@ def normalize(
                 page=candidate.page,
                 char_start=offset,
                 char_end=offset + len(text),
+                starts_stanza=candidate.starts_stanza,
                 confidence=candidate.confidence,
                 bbox=None,
             )

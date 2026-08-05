@@ -19,7 +19,14 @@ from __future__ import annotations
 import xml.etree.ElementTree as ET
 from collections.abc import Iterator
 
-from app.models.diff import BlockStatus, ComparisonResult, DiffBlock, Token, TokenStatus
+from app.models.diff import (
+    BlockStatus,
+    ComparisonResult,
+    DiffBlock,
+    StanzaBoundary,
+    Token,
+    TokenStatus,
+)
 from app.models.document import BlockKind, DocumentSummary
 
 TEI_NS = "http://www.tei-c.org/ns/1.0"
@@ -212,25 +219,28 @@ def _append_body(body: ET.Element, blocks: list[DiffBlock]) -> None:
     A bare ``<l>`` is not how TEI presents verse. Lines belong to a ``<lg>``,
     and a consumer that renders or queries poetry expects to find them there.
 
-    A contiguous run of ``VERSE_LINE`` blocks becomes one ``<lg>``. That is as
-    much as the payload knows: segmentation makes each line its own block, and
-    ``DiffBlock`` carries no stanza membership, so two consecutive stanzas are
-    indistinguishable from one long one by the time the export sees them. The
-    grouping is therefore accurate about lines and approximate about stanzas,
-    which is the honest way round — inventing a stanza break would put
-    structure in a scholarly file that nothing in the collation supports.
+    A new line group begins wherever either witness begins a stanza, which is
+    what ``DiffBlock.stanza_boundary`` records. ADR-0006 had to settle for one
+    group per contiguous run of verse, because the payload carried nothing
+    finer; ADR-0007 gave it stanza boundaries and the grouping is now exact.
+
+    Where the witnesses disagree about a break, the group is still divided
+    there. The disagreement is not discarded — it is the finding — but a TEI
+    document has one body, so it takes the division either witness attests
+    rather than inventing a third structure that neither has.
     """
     group: ET.Element | None = None
 
     for block in blocks:
-        if block.kind is BlockKind.VERSE_LINE:
-            if group is None:
-                group = _sub(body, "lg")
-            _append_block(group, block)
+        if block.kind is not BlockKind.VERSE_LINE:
+            group = None
+            _append_block(body, block)
             continue
 
-        group = None
-        _append_block(body, block)
+        if group is None or block.stanza_boundary is not StanzaBoundary.NONE:
+            group = _sub(body, "lg")
+
+        _append_block(group, block)
 
 
 def _append_block(parent: ET.Element, block: DiffBlock) -> ET.Element:

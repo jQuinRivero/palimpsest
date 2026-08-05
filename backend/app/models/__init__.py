@@ -21,6 +21,7 @@ from app.models.diff import (
     DiffMetrics,
     DiffOptions,
     Granularity,
+    StanzaBoundary,
     Token,
     TokenStatus,
 )
@@ -77,6 +78,7 @@ __all__ = [
     "ParserCapabilitiesResponse",
     "ProblemDetail",
     "SourceFormat",
+    "StanzaBoundary",
     "Token",
     "TokenStatus",
     "assert_comparison",

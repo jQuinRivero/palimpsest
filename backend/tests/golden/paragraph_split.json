@@ -67,7 +67,8 @@
         "churn": 0.0
       },
       "move_distance": null,
-      "group_id": "grp_0001"
+      "group_id": "grp_0001",
+      "stanza_boundary": null
     },
     {
       "id": "dbk_0002",
@@ -103,7 +104,8 @@
         "churn": 0.0
       },
       "move_distance": null,
-      "group_id": "grp_0001"
+      "group_id": "grp_0001",
+      "stanza_boundary": null
     }
   ],
   "metrics": {
@@ -116,6 +118,7 @@
     "blocks_moved": 0,
     "blocks_split": 2,
     "blocks_merged": 0,
+    "stanza_breaks_changed": 0,
     "a_word_count": 24,
     "b_word_count": 24
   },

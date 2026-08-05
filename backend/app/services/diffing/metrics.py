@@ -17,6 +17,7 @@ from app.models.diff import (
     BlockStatus,
     DiffBlock,
     DiffMetrics,
+    StanzaBoundary,
     Token,
     TokenStatus,
 )
@@ -93,6 +94,13 @@ def document_metrics(blocks: list[DiffBlock]) -> DiffMetrics:
         blocks_moved=sum(1 for b in blocks if b.status is BlockStatus.MOVED),
         blocks_split=sum(1 for b in blocks if b.status is BlockStatus.SPLIT),
         blocks_merged=sum(1 for b in blocks if b.status is BlockStatus.MERGED),
+        # A stanza break present in one witness and absent in the other. Like
+        # the other structural counts this never touches edit_count: dividing
+        # an octave into two quatrains changes no words at all, and without
+        # this the comparison would report the two as identical.
+        stanza_breaks_changed=sum(
+            1 for b in blocks if b.stanza_boundary in (StanzaBoundary.A_ONLY, StanzaBoundary.B_ONLY)
+        ),
         a_word_count=a_word_count,
         b_word_count=b_word_count,
     )

@@ -187,6 +187,7 @@ class SqliteSessionStore:
                 blocks_moved=0,
                 blocks_split=0,
                 blocks_merged=0,
+                stanza_breaks_changed=0,
                 a_word_count=a.metadata.word_count,
                 b_word_count=b.metadata.word_count,
             ),

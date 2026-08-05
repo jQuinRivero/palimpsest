@@ -128,6 +128,8 @@ It was the best of times, it was the worst of times, it was the age of wisdom.
 
 Never reflow `VERSE_LINE` blocks. Emit `IngestionWarning` with `code="REFLOW_DECISION"` when geometry is uncertain.
 
+Verse is not merely exempted from reflow; it is segmented into one `VERSE_LINE` block per line, so that the line rather than the stanza becomes the unit of comparison. See [Normalization](./03-normalization.md), which also states why the heuristic is biased toward prose and what that bias rejects.
+
 ### Running heads and folio numbers
 
 **Symptom.** Every page contributes noise such as `MIDDLEMARCH` or `127`.
@@ -540,6 +542,7 @@ old without speaking.
 | Hard hyphenated compound | Hyphen-preserved candidate valid or repeated elsewhere | Preserve hard hyphen | None |
 | Em/en dash punctuation | Unicode dash punctuation at break | Preserve punctuation | None |
 | Soft line breaks | Same paragraph geometry and continuation evidence | Reflow prose, never verse | `REFLOW_DECISION` |
+| Verse | Three or more lines of consistent short measure, each a phrase | Segment into one `VERSE_LINE` block per line | `VERSE_SEGMENTED` |
 | Running heads and folio numbers | Repeated text at repeated page position | Emit `ARTIFACT` and exclude by default | `ARTIFACT_CLASSIFIED` |
 | Footnotes and marginalia collision | Note-sized or margin-positioned text interleaves with body | Separate as `ARTIFACT` when clear; otherwise keep and warn | `READING_ORDER_UNCERTAIN` |
 | Multi-column PDF | Stable overlapping column bands | Resolve clear columns; otherwise honest uncertain extraction | `MULTICOLUMN_UNCERTAIN` |

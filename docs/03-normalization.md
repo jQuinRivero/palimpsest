@@ -143,8 +143,10 @@ Reflow joins soft line breaks when the evidence points to layout rather than aut
 
 | Before | After |
 |---|---|
-| `Shall I compare thee to a summer's day?\nThou art more lovely and more temperate:` | Two `VERSE_LINE` blocks, unchanged. |
+| A quatrain of four consistently measured lines | Four `VERSE_LINE` blocks, one per line, unchanged |
 | `The argument continues without\ninterruption across the margin.` | One `PARAGRAPH` block: `The argument continues without interruption across the margin.` |
+
+A two-line fragment is **not** enough evidence. Two lines carry no reliable measure, and the pairs that superficially resemble a couplet — a heading above its first line, a speaker label, a date over an address — are far more common in real uploads than actual verse. Detection needs at least three lines.
 
 ### 5. Dehyphenation
 
@@ -171,11 +173,30 @@ After text-level normalization, ingestion creates `Block` objects and assigns `B
 | Evidence | `BlockKind` |
 |---|---|
 | Parser style `Heading 1` through `Heading 9`, Markdown ATX heading, Markdown setext heading | `HEADING` |
-| Repeated short poetic lines or parser-provided verse evidence | `VERSE_LINE` |
+| Three or more lines of consistent short measure, each a phrase | `VERSE_LINE` |
 | DOCX `Quote` or `Intense Quote`, Markdown blockquote | `QUOTE` |
 | DOCX `List *`, Markdown list item | `LIST_ITEM` |
 | Running head, folio number, footer | `ARTIFACT` |
 | Default prose | `PARAGRAPH` |
+
+### Verse segmentation
+
+A block judged to be verse is split into one `VERSE_LINE` block per line, for every format. This is not cosmetic. Blocks are the unit of alignment, so a stanza-sized block reports a single revised word as a wholly modified stanza, and hides a transposed line entirely — moves are detected *between* blocks, never inside one. Line-level blocks are what let a reordered line read as `MOVED` with no wording change at all.
+
+Only unclassified prose is eligible. A block the parser has already called a heading, quote, list item or artifact keeps that kind: a parser that knows outranks a heuristic that guesses.
+
+**The bias is deliberately toward prose**, because the two errors are not symmetric. A missed poem leaves the previous behaviour intact. A misjudged paragraph is shattered into blocks that nobody reading the comparison can distinguish from structure the author wrote. Two rules follow:
+
+| Rule | What it rejects |
+|---|---|
+| Lines must sit well below any normal prose measure, and consistently so | Narrow-column typeset prose, which is also consistent but sits *at* the measure |
+| The median line must be a phrase rather than a single word | A column of figures, an address block, a list of one-word items, a run of initials — all perfectly consistent, none of them verse |
+
+The second rule earns its place: without it, `A\nB\nC` is read as a poem.
+
+Detection carries an `IngestionWarning` (`VERSE_SEGMENTED`) rather than being applied silently. Deciding a text is verse changes the unit of comparison, and a researcher must be able to see that the tool made that call — most of all when it made it wrongly.
+
+Verse whose lines run long — much blank verse — will not be detected, and is left as prose. That is the conservative bias working as intended rather than a defect to be tuned away without evidence.
 
 Worked example:
 

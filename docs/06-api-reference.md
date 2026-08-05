@@ -627,6 +627,7 @@ Host: localhost:8000
 | Reconstruction | Selecting every `<rdg wit="#A">` and concatenating reproduces the Manuscript A pane word for word, and likewise for B. This is what makes the file an archive rather than a rendering. |
 | Element identity | Every block element carries `@xml:id` derived from `DiffBlock.id`, so citations and `<link>` targets are stable. |
 | Structural relations | `MOVED`, `SPLIT`, and `MERGED` appear as `<linkGrp type="moved\|split\|merged">` in `<back>`. One split is one `<link>` naming every member, not one link per member. |
+| Verse | `VERSE_LINE` blocks export as `<l>` gathered into an `<lg>`, because a bare `<l>` is not how TEI presents verse. A contiguous run of verse lines becomes one line group — the payload carries no stanza membership, so the grouping is accurate about lines and approximate about stanzas. Inventing a stanza break would put structure into the file that nothing in the collation supports. |
 | Completeness | A windowed or still-pending comparison is never exported. A truncated screen shows the reader it is truncated; a TEI file does not. |
 
 ### Pending response

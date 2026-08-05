@@ -179,6 +179,13 @@ The ordinals are block indices, not visual line numbers. Prose reflows with view
 
 The baseline grid is derived from `--leading-manuscript`. Manuscript paragraphs use `1lh` block spacing by default, with headings and verse lines adjusted by `BlockKind` rather than by arbitrary margins.
 
+Verse departs from the paragraph rhythm in two specific ways, and both are legibility rather than decoration:
+
+| Treatment | Reason |
+|---|---|
+| Tighter block spacing than a paragraph | Verse lines are lines of one poem, not consecutive paragraphs. Paragraph spacing sets a stanza double-spaced and destroys its shape on the page. |
+| Hanging indent on wrap | A verse line too long for the measure must wrap so that the reader cannot mistake the wrap for a line break. In poetry the line break is the meaning, and a false one misreads the poem. |
+
 The system deliberately chooses generous whitespace over information density. Dense rows make prose behave like log output; `palimpsest` should behave like an annotated page. Alignment gaps in synoptic view are allowed when they preserve correspondence between Manuscript A and Manuscript B. They are preferable to compressing the text or faking pixel-linked scroll.
 
 ## Tailwind v4 implementation

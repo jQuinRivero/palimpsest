@@ -66,11 +66,15 @@ This is exactly why v1 avoids it. SQLite session storage with TTL is a deliberat
 
 ### Alignment quality
 
-**Motivation.** Heavily rewritten passages, verse, drama, and repetitive text expose the limits of block similarity plus LIS move detection.
+**Delivered in part.** Verse is now segmented into one block per line, so poetry aligns at the line rather than the stanza and a transposed line reports as `MOVED`. A repeated refrain does not confuse alignment. See [Normalization](./03-normalization.md).
 
-**What it requires.** Semantic or embedding-assisted alignment may help match paraphrased or heavily revised blocks, but it must not turn the tool into meaning-level diffing. Verse and drama need structure-aware block segmentation so refrains, speaker labels, and stage directions do not confuse move detection. User-correctable alignment would let a scholar override a bad match; those corrections could also become training data for future alignment heuristics.
+**Motivation.** Heavily rewritten passages, drama, and repetitive text still expose the limits of block similarity plus LIS move detection.
 
-**Existing seam.** `backend/app/services/diffing/alignment.py`, `DiffOptions.align_threshold`, `DiffOptions.move_threshold`, `DiffOptions.detect_moves`, `DiffBlock.group_id`, and URL state `?moves=on|off`.
+**What it requires.** Semantic or embedding-assisted alignment may help match paraphrased or heavily revised blocks, but it must not turn the tool into meaning-level diffing. Drama needs structure-aware segmentation so speaker labels and stage directions are not compared as if they were dialogue. User-correctable alignment would let a scholar override a bad match; those corrections could also become training data for future alignment heuristics.
+
+Two verse-specific gaps remain. Stanza boundaries are lost once a poem is segmented, because `DiffBlock` carries no stanza membership — so an added or removed stanza break is currently invisible, and the TEI export can only approximate `<lg>`. And verse whose lines run long, much blank verse among it, falls outside the conservative detection threshold and is read as prose. Both want evidence from real use before being tuned, and the first needs a schema change through an ADR.
+
+**Existing seam.** `backend/app/services/diffing/alignment.py`, `DiffOptions.align_threshold`, `DiffOptions.move_threshold`, `DiffOptions.detect_moves`, `DiffBlock.group_id`, `BlockKind.VERSE_LINE`, and URL state `?moves=on|off`.
 
 ### Scale
 

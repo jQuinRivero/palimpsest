@@ -173,7 +173,8 @@ class TestStructure:
         [
             (BlockKind.PARAGRAPH, "p"),
             (BlockKind.HEADING, "head"),
-            (BlockKind.VERSE_LINE, "l"),
+            # Verse lines live inside a line group; see the dedicated test.
+            (BlockKind.VERSE_LINE, "lg"),
             (BlockKind.QUOTE, "quote"),
             (BlockKind.LIST_ITEM, "item"),
             (BlockKind.ARTIFACT, "fw"),
@@ -189,6 +190,35 @@ class TestStructure:
         body = root.find("t:text/t:body", NS)
         assert body is not None
         assert body[0].tag == f"{{{TEI}}}{expected}"
+
+    def test_verse_lines_are_gathered_into_a_line_group(self) -> None:
+        """A bare `<l>` is not how TEI presents verse."""
+        lines = ["First line of the stanza.", "Second line of the stanza."]
+        doc_a = make_document("a", lines)
+        doc_b = make_document("b", lines)
+        for document in (doc_a, doc_b):
+            for block in document.blocks:
+                block.kind = BlockKind.VERSE_LINE
+
+        root = ET.fromstring(build_tei(build_comparison(doc_a, doc_b)))
+        body = root.find("t:text/t:body", NS)
+        assert body is not None
+
+        assert [child.tag for child in body] == [f"{{{TEI}}}lg"]
+        group = body[0]
+        assert [child.tag for child in group] == [f"{{{TEI}}}l"] * 2
+
+    def test_prose_after_verse_leaves_the_line_group(self) -> None:
+        doc_a = make_document("a", ["A line of verse here.", "Then ordinary prose."])
+        doc_b = make_document("b", ["A line of verse here.", "Then ordinary prose."])
+        for document in (doc_a, doc_b):
+            document.blocks[0].kind = BlockKind.VERSE_LINE
+
+        root = ET.fromstring(build_tei(build_comparison(doc_a, doc_b)))
+        body = root.find("t:text/t:body", NS)
+        assert body is not None
+
+        assert [child.tag for child in body] == [f"{{{TEI}}}lg", f"{{{TEI}}}p"]
 
 
 class TestStructuralRelations:

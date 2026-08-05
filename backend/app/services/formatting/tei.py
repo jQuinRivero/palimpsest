@@ -206,8 +206,35 @@ def _build_header(comparison: ComparisonResult) -> ET.Element:
     return header
 
 
-def _append_block(body: ET.Element, block: DiffBlock) -> ET.Element:
-    element = _sub(body, _ELEMENT_FOR_KIND.get(block.kind, "p"))
+def _append_body(body: ET.Element, blocks: list[DiffBlock]) -> None:
+    """Lay out the collation, gathering verse lines into line groups.
+
+    A bare ``<l>`` is not how TEI presents verse. Lines belong to a ``<lg>``,
+    and a consumer that renders or queries poetry expects to find them there.
+
+    A contiguous run of ``VERSE_LINE`` blocks becomes one ``<lg>``. That is as
+    much as the payload knows: segmentation makes each line its own block, and
+    ``DiffBlock`` carries no stanza membership, so two consecutive stanzas are
+    indistinguishable from one long one by the time the export sees them. The
+    grouping is therefore accurate about lines and approximate about stanzas,
+    which is the honest way round — inventing a stanza break would put
+    structure in a scholarly file that nothing in the collation supports.
+    """
+    group: ET.Element | None = None
+
+    for block in blocks:
+        if block.kind is BlockKind.VERSE_LINE:
+            if group is None:
+                group = _sub(body, "lg")
+            _append_block(group, block)
+            continue
+
+        group = None
+        _append_block(body, block)
+
+
+def _append_block(parent: ET.Element, block: DiffBlock) -> ET.Element:
+    element = _sub(parent, _ELEMENT_FOR_KIND.get(block.kind, "p"))
     _xml_id(element, block_xml_id(block))
 
     children: list[ET.Element] = []
@@ -303,8 +330,7 @@ def build_tei(comparison: ComparisonResult) -> str:
 
     text = _sub(root, "text")
     body = _sub(text, "body")
-    for block in comparison.blocks:
-        _append_block(body, block)
+    _append_body(body, comparison.blocks)
 
     back = _sub(text, "back")
     _append_structural_links(back, comparison.blocks)

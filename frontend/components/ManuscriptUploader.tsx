@@ -212,7 +212,16 @@ function slotStatus(slot: WitnessSlot) {
     case "uploaded":
       return `${slot.label} uploaded ${slot.document?.title ?? slot.file?.name ?? "a file"}.`;
     case "error":
-      return `${slot.label} has an error: ${slot.error?.detail ?? "Upload failed."}`;
+      // The file is named here rather than left to the message. Whether a
+      // refusal comes from the local pre-check or from the server is a race
+      // once capabilities are slow, and the two word it differently — the
+      // server's is deliberately about parsers, not about this upload. A
+      // researcher comparing two witnesses needs to know which file failed
+      // whichever authority answered, and a listener has only this sentence:
+      // the card names the file on screen, but that is not read out here.
+      return `${slot.label} has an error${
+        slot.file ? ` with ${slot.file.name}` : ""
+      }: ${slot.error?.detail ?? "Upload failed."}`;
   }
 }
 
@@ -263,12 +272,17 @@ export function ManuscriptUploader({
   async function selectFile(key: SlotKey, file: File) {
     setSubmissionProblem(null);
 
-    if (!capabilities) {
-      setSlotError(key, localProblem("UNSUPPORTED_FORMAT", "Accepted formats are still loading."));
-      return;
-    }
-
-    if (file.size > capabilities.max_upload_bytes) {
+    // The checks below are a courtesy: they fail fast and locally so a
+    // researcher is not made to wait for an upload that cannot succeed. The
+    // server is the authority on both format and size and re-checks each.
+    //
+    // So when capabilities have not arrived, the honest move is to upload and
+    // let the server answer. Refusing here instead told the researcher their
+    // file was an UNSUPPORTED_FORMAT — which is not something we know yet, and
+    // may well be false — and then discarded it, so a slow capabilities
+    // request turned a perfectly good manuscript into a dead end they had to
+    // select again.
+    if (capabilities && file.size > capabilities.max_upload_bytes) {
       setSlots((current) => ({
         ...current,
         [key]: {
@@ -280,7 +294,7 @@ export function ManuscriptUploader({
           progress: 0,
           error: localProblem(
             "FILE_TOO_LARGE",
-            `${file.name} is ${formatBytes(file.size)}. The upload limit is ${formatBytes(
+            `This file is ${formatBytes(file.size)}. The upload limit is ${formatBytes(
               capabilities.max_upload_bytes,
             )}.`,
           ),
@@ -289,7 +303,7 @@ export function ManuscriptUploader({
       return;
     }
 
-    if (!isAcceptedFile(file, capabilities)) {
+    if (capabilities && !isAcceptedFile(file, capabilities)) {
       setSlots((current) => ({
         ...current,
         [key]: {
@@ -301,7 +315,7 @@ export function ManuscriptUploader({
           progress: 0,
           error: localProblem(
             "UNSUPPORTED_FORMAT",
-            `${file.name} is not one of the formats advertised by this server.`,
+            "This is not one of the formats advertised by this server.",
           ),
         },
       }));

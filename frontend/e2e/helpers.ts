@@ -81,3 +81,21 @@ export async function gotoComparison(page: Page, path: string): Promise<void> {
   await page.goto(path);
   await expect(page.getByTestId("diff-viewer")).toHaveAttribute("data-hydrated", "true");
 }
+
+/**
+ * Open the uploader and hand Manuscript A a file.
+ *
+ * Waits for the accepted-formats line, which renders only once
+ * `GET /api/v1/capabilities` has answered. Without that wait, whether the
+ * uploader's local pre-check or the server refuses a file is a race, and a
+ * test meaning to exercise one would sometimes exercise the other.
+ */
+export async function chooseWitnessFile(
+  page: Page,
+  file: { name: string; mimeType: string; buffer: Buffer },
+): Promise<void> {
+  await page.goto("/");
+  await expect(page.getByTestId("manuscript-uploader")).toBeVisible();
+  await expect(page.getByTestId("accepted-formats")).toBeVisible();
+  await page.locator('input[type="file"]').first().setInputFiles(file);
+}

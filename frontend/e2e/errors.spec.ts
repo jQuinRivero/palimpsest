@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { chooseWitnessFile } from "./helpers";
 import { buildScannedPdf } from "./pdf";
 
 /**
@@ -13,19 +14,6 @@ import { buildScannedPdf } from "./pdf";
  */
 
 const UPLOADER = '[data-testid="manuscript-uploader"]';
-
-async function chooseFile(
-  page: import("@playwright/test").Page,
-  file: { name: string; mimeType: string; buffer: Buffer },
-) {
-  await page.goto("/");
-  await expect(page.locator(UPLOADER)).toBeVisible();
-  // Wait for capabilities. Without this the local pre-check may or may not
-  // have run by the time the file is chosen, so a test meaning to exercise
-  // the local path would silently exercise the server's instead.
-  await expect(page.getByTestId("accepted-formats")).toBeVisible();
-  await page.locator('input[type="file"]').first().setInputFiles(file);
-}
 
 async function dropFile(
   page: import("@playwright/test").Page,
@@ -70,7 +58,7 @@ test("the accepted formats are written for a person", async ({ page }) => {
 });
 
 test("an unsupported file is refused in words, not just in a code", async ({ page }) => {
-  await chooseFile(page, {
+  await chooseWitnessFile(page, {
     name: "photograph.png",
     mimeType: "image/png",
     buffer: Buffer.from([0x89, 0x50, 0x4e, 0x47, 13, 10, 26, 10]),
@@ -112,7 +100,7 @@ test("the server's refusal names the file too", async ({ page }) => {
 });
 
 test("an empty witness is refused", async ({ page }) => {
-  await chooseFile(page, {
+  await chooseWitnessFile(page, {
     name: "blank.txt",
     mimeType: "text/plain",
     buffer: Buffer.from("   \n  \n"),
@@ -127,7 +115,7 @@ test("a scanned PDF is refused honestly rather than read as blank", async ({ pag
   // silent lie.
   const scanned = buildScannedPdf(2);
 
-  await chooseFile(page, {
+  await chooseWitnessFile(page, {
     name: "scanned.pdf",
     mimeType: "application/pdf",
     buffer: scanned,
@@ -141,7 +129,7 @@ test("a scanned PDF is refused honestly rather than read as blank", async ({ pag
 });
 
 test("a refusal is announced, not only shown", async ({ page }) => {
-  await chooseFile(page, {
+  await chooseWitnessFile(page, {
     name: "photograph.png",
     mimeType: "image/png",
     buffer: Buffer.from([0x89, 0x50, 0x4e, 0x47, 13, 10, 26, 10]),

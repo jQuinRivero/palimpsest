@@ -182,6 +182,8 @@ End-to-end tests use small public-domain fixtures so they remain fast enough to 
 
 Automated axe checks run against upload, synoptic view, unified view, empty states, and error states. Automated checks are necessary but not sufficient.
 
+Error states are checked with a refusal actually on screen, not merely with the page that can produce one. The refusal panel is the surface most at risk: it is the only place text sits on the deletion underlay, and it pairs that with a muted code line. A page whose error state is unreachable in the test is a page whose error state is unchecked.
+
 Manual accessibility checks follow [Design system](./09-design-system.md):
 
 | Requirement | Manual check |

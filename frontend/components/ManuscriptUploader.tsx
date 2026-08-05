@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { ApiError, createComparison, getCapabilities, uploadDocument } from "../lib/api";
+import { waitForComparison, type PollProgress } from "../lib/waitForComparison";
 import type {
   CapabilitiesResponse,
   ComparisonResult,
@@ -188,6 +189,7 @@ export function ManuscriptUploader({
   const [isDragging, setIsDragging] = useState<Record<SlotKey, boolean>>({ a: false, b: false });
   const [submissionProblem, setSubmissionProblem] = useState<ApiProblem | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [collating, setCollating] = useState<PollProgress | null>(null);
   const accept = useMemo(() => buildAccept(capabilities), [capabilities]);
   const options = useMemo(
     () => ({ ...capabilities?.diff_options_defaults, ...defaultOptions, ...initialOptions }),
@@ -347,16 +349,36 @@ export function ManuscriptUploader({
     if (!slots.a.document || !slots.b.document) return;
     setIsSubmitting(true);
     setSubmissionProblem(null);
+    setCollating(null);
     try {
-      const comparison = await createComparison(slots.a.document.id, slots.b.document.id, options);
-      onComparisonCreated?.(comparison);
-      router.push(`/c/${comparison.comparison_id}`);
+      const outcome = await createComparison(
+        slots.a.document.id,
+        slots.b.document.id,
+        options,
+      );
+
+      if (outcome.status === "COMPLETE") {
+        onComparisonCreated?.(outcome.comparison);
+        router.push(`/c/${outcome.comparison.comparison_id}`);
+        return;
+      }
+
+      // Accepted, not finished. Wait here rather than navigating to a
+      // comparison that does not exist yet.
+      const { comparison_id: comparisonId, retry_after: retryAfter } = outcome.accepted;
+      setCollating({ attempt: 0, elapsedMs: 0 });
+      await waitForComparison(comparisonId, {
+        initialDelayMs: retryAfter * 1000,
+        onProgress: setCollating,
+      });
+      router.push(`/c/${comparisonId}`);
     } catch (error: unknown) {
       const problem = problemFromUnknown(error);
       setSubmissionProblem(problem);
       onError?.(problem);
     } finally {
       setIsSubmitting(false);
+      setCollating(null);
     }
   }
 
@@ -462,6 +484,19 @@ export function ManuscriptUploader({
           >
             {isSubmitting ? "Preparing comparison…" : "Compare Manuscript A and Manuscript B"}
           </button>
+
+          {collating ? (
+            <p
+              className="mt-4 text-center text-sm text-ink-muted"
+              data-testid="collating-status"
+              aria-live="polite"
+            >
+              {/* No estimate. The server does not know how long this will
+                  take, so promising a number would be inventing one. */}
+              Collating two long manuscripts. This can take a little while — the
+              page will open the comparison as soon as it is ready.
+            </p>
+          ) : null}
         </div>
       </div>
     </section>

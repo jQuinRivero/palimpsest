@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { ApiError, getComparison } from "@/lib/api";
+import { ComparisonPending } from "@/components/ComparisonPending";
 import { DiffViewer } from "@/components/DiffViewer";
 import type { ViewMode } from "@/lib/types";
 
@@ -23,9 +24,9 @@ export default async function ComparisonPage({
   const { comparisonId } = await params;
   const { view, block } = await searchParams;
 
-  let comparison;
+  let outcome;
   try {
-    comparison = await getComparison(comparisonId);
+    outcome = await getComparison(comparisonId);
   } catch (error) {
     if (error instanceof ApiError && (error.status === 404 || error.status === 410)) {
       // An expired comparison is genuinely gone: sessions are a cache with a
@@ -34,6 +35,22 @@ export default async function ComparisonPage({
     }
     throw error;
   }
+
+  if (outcome.status === "PENDING") {
+    // Accepted but not finished — reachable by sharing or refreshing the link
+    // while a large collation runs. There is no comparison to render yet, and
+    // rendering one anyway is how this path used to return a 500.
+    return (
+      <main className="mx-auto max-w-7xl px-6 py-10">
+        <ComparisonPending
+          comparisonId={comparisonId}
+          retryAfter={outcome.accepted.retry_after}
+        />
+      </main>
+    );
+  }
+
+  const comparison = outcome.comparison;
 
   const mode: ViewMode = view === "unified" ? "unified" : "synoptic";
   const requested = block !== undefined && /^\d+$/.test(block) ? Number(block) : null;

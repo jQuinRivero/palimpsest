@@ -27,6 +27,7 @@ export type DocumentSummary = Schemas["DocumentSummary"];
 export type DocumentMetadata = Schemas["DocumentMetadata"];
 export type IngestionWarning = Schemas["IngestionWarning"];
 export type ComparisonResult = Schemas["ComparisonResult"];
+export type ComparisonAccepted = Schemas["ComparisonAccepted"];
 export type BlockPage = Schemas["BlockPage"];
 export type CapabilitiesResponse = Schemas["CapabilitiesResponse"];
 export type ParserCapabilities = Schemas["ParserCapabilitiesResponse"];

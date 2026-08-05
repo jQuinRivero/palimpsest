@@ -8,6 +8,7 @@
 import type {
   BlockPage,
   CapabilitiesResponse,
+  ComparisonAccepted,
   ComparisonResult,
   DiffOptions,
   DocumentSummary,
@@ -54,6 +55,38 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return (await response.json()) as T;
 }
 
+/**
+ * A comparison is either finished or still being collated.
+ *
+ * The server answers `202` for a comparison above its inline budget and
+ * computes it in the background. `202` is a success status, so a client that
+ * only checks `response.ok` receives a `ComparisonAccepted` — which carries no
+ * blocks and no metrics — while believing it holds a `ComparisonResult`. That
+ * is how uploading two large manuscripts used to end at a 500 page reading
+ * "Cannot read properties of undefined (reading 'length')".
+ *
+ * Making the two outcomes distinct types means the caller cannot skip the
+ * question.
+ */
+export type ComparisonOutcome =
+  | { status: "COMPLETE"; comparison: ComparisonResult }
+  | { status: "PENDING"; accepted: ComparisonAccepted };
+
+async function requestComparison(
+  path: string,
+  init?: RequestInit,
+): Promise<ComparisonOutcome> {
+  const response = await fetch(`${API_BASE}${path}`, { ...init, cache: "no-store" });
+  if (!response.ok) {
+    throw await toApiError(response);
+  }
+
+  if (response.status === 202) {
+    return { status: "PENDING", accepted: (await response.json()) as ComparisonAccepted };
+  }
+  return { status: "COMPLETE", comparison: (await response.json()) as ComparisonResult };
+}
+
 export function getCapabilities(): Promise<CapabilitiesResponse> {
   return request<CapabilitiesResponse>("/api/v1/capabilities");
 }
@@ -77,8 +110,8 @@ export function createComparison(
   aDocumentId: string,
   bDocumentId: string,
   options?: Partial<DiffOptions>,
-): Promise<ComparisonResult> {
-  return request<ComparisonResult>("/api/v1/comparisons", {
+): Promise<ComparisonOutcome> {
+  return requestComparison("/api/v1/comparisons", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -92,9 +125,9 @@ export function createComparison(
 export function getComparison(
   comparisonId: string,
   includeBlocks = true,
-): Promise<ComparisonResult> {
+): Promise<ComparisonOutcome> {
   const query = includeBlocks ? "" : "?include_blocks=false";
-  return request<ComparisonResult>(`/api/v1/comparisons/${comparisonId}${query}`);
+  return requestComparison(`/api/v1/comparisons/${comparisonId}${query}`);
 }
 
 export function getComparisonBlocks(

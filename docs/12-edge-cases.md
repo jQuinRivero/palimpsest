@@ -482,6 +482,85 @@ old without speaking.
 
 **Handling policy.** Emit `BlockStatus.SPLIT` or `BlockStatus.MERGED`, shared `group_id`, zero token edits, and structural metrics. This must read as a structural change, not as a rewrite.
 
+## Untrusted input
+
+The first thing this application does is accept a file from someone it knows
+nothing about. Every limit below exists because a file can be built to cost
+more than it appears to, and because the size of an upload says almost nothing
+about the work it demands.
+
+These are configuration, not promises. They are the numbers this deployment is
+willing to spend, and a different deployment may set them differently through
+the `PALIMPSEST_` environment prefix.
+
+### Decompression bombs
+
+**Symptom.** A small `.docx` exhausts memory and takes the process down.
+
+**Why it happens.** A `.docx` is a ZIP. The upload cap counts *compressed*
+bytes, and a ZIP built for the purpose expands by three orders of magnitude. A
+120 KiB archive of one repeated byte expands to 120 MiB; at that ratio a 25 MiB
+upload that passes the cap becomes about 25 GiB.
+
+**Detection rule.** Sum the declared uncompressed sizes from the archive's
+central directory and compare against `max_decompressed_bytes`. Nothing is
+decompressed to do this, so an honest manuscript pays nothing.
+
+**Handling policy.** Refuse with `code="FILE_TOO_LARGE"` (`413`), naming both
+the declared size and the limit. The file is well formed; it is simply more
+than this deployment will spend, which is a different answer from "malformed"
+and deserves a different one.
+
+**Why the declared size can be trusted here.** It is written by whoever built
+the archive, which looks like exactly the wrong thing to trust. It is safe
+against this reader: `zipfile` stops a member at its declared length and then
+fails the CRC, so an archive holding 8 MiB while declaring 1 KiB delivers zero
+bytes and raises `BadZipFile`. python-docx reads through the same library. A
+streaming counter was written to defend against under-declaration and then
+removed once this was tested rather than assumed — it would have decompressed
+every legitimate upload in full to prevent something the library already
+prevents. The behaviour is pinned by a test so that a future Python which
+changes it fails loudly.
+
+### Page-count bombs
+
+**Symptom.** A small PDF takes a very long time to ingest.
+
+**Why it happens.** A PDF states its own page count and every page is then
+examined for text and geometry. Page objects are cheap and shareable, so the
+work a request costs is set by the file's structure rather than by its size.
+
+**Detection rule.** Compare the declared page count against `max_pdf_pages`
+before the first page is touched.
+
+**Handling policy.** Refuse with `code="FILE_TOO_LARGE"`, naming the count and
+the limit.
+
+### What is not bounded
+
+Stated plainly, because a limit nobody wrote down is indistinguishable from one
+nobody thought of:
+
+| Not bounded | Why it is acceptable for now |
+|---|---|
+| Time spent parsing one accepted file | The size and page limits bound the input, and the diff engine has its own token and block ceilings. No wall-clock budget exists; a pathological file within all limits could still be slow. |
+| Concurrent expensive requests | Rate limiting bounds request *count* per client, not total work in flight. A deployment expecting hostile load needs a process manager with memory limits, not only these numbers. |
+| Nested archives | A `.docx` member is never itself unpacked, so there is no recursion to bound. This holds only while no parser unpacks a member. |
+
+### Limits
+
+| Setting | Default | Bounds |
+|---|---:|---|
+| `max_upload_bytes` | 25 MiB | Bytes accepted from the network |
+| `max_decompressed_bytes` | 128 MiB | What one upload may become once unpacked |
+| `max_pdf_pages` | 5,000 | Pages one document may declare |
+
+The decompression and page ceilings sit well above any manuscript this tool
+will collate — the token ceiling puts a full-length book at a few megabytes of
+text and a few hundred pages — and far below anything that threatens the
+process. Refusing a real manuscript is the expensive failure, so the headroom
+is deliberate.
+
 ## Operational cases
 
 ### Upload size limits
@@ -545,6 +624,8 @@ old without speaking.
 | Verse | Three or more lines of consistent short measure, each a phrase | Segment into one `VERSE_LINE` block per line | `VERSE_SEGMENTED` |
 | Running heads and folio numbers | Repeated text at repeated page position | Emit `ARTIFACT` and exclude by default | `ARTIFACT_CLASSIFIED` |
 | Footnotes and marginalia collision | Note-sized or margin-positioned text interleaves with body | Separate as `ARTIFACT` when clear; otherwise keep and warn | `READING_ORDER_UNCERTAIN` |
+| Decompression bomb | Declared uncompressed total over `max_decompressed_bytes` | Refuse before decompressing | `FILE_TOO_LARGE` |
+| Page-count bomb | Declared page count over `max_pdf_pages` | Refuse before reading the first page | `FILE_TOO_LARGE` |
 | Multi-column PDF | Stable overlapping column bands | Resolve clear columns; otherwise honest uncertain extraction | `MULTICOLUMN_UNCERTAIN` |
 | Tables and captions | Tabular x-alignments or caption prefixes | Flatten or classify as `ARTIFACT` | `NON_PROSE_FLATTENED` |
 | Drop caps and small caps | Decorative first glyph split from word | Recombine only with geometry evidence | `DROP_CAP_RECOMBINED` |

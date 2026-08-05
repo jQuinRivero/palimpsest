@@ -862,6 +862,8 @@ Errors use RFC 9457 `application/problem+json` with `type`, `title`, `status`, `
 | Limit or safeguard | v1 value | Reason |
 |---|---:|---|
 | Maximum upload size | 25 MiB per witness | Keeps parser memory and disk use bounded |
+| Maximum decompressed size | 128 MiB per witness | The upload cap counts compressed bytes; a ZIP expands by up to three orders of magnitude, so a `.docx` needs its own ceiling. See [Edge cases](./12-edge-cases.md) |
+| Maximum PDF pages | 5,000 per witness | A PDF declares its own page count and every page is examined, so a small file can demand a great deal of work |
 | Inline comparison block budget | 4,000 total blocks | Larger allowed collations move to the `202 ComparisonAccepted` path |
 | Absolute comparison block budget | 12,000 total blocks | Protects alignment matrix growth |
 | Inline token budget | 250,000 estimated total tokens | Larger allowed collations move to the `202 ComparisonAccepted` path |

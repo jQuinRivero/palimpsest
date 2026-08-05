@@ -17,6 +17,7 @@ from app.services.ingestion.base import (
     DocumentSource,
     ParserCapabilities,
     SourceProbe,
+    SourceTooLargeError,
 )
 from app.services.ingestion.normalize import NormalizationBlock, normalize
 
@@ -89,6 +90,11 @@ class DocxParser(BaseDocumentParser):
         if not _has_word_document_part(data):
             raise ValueError("DOCX package is missing word/document.xml")
 
+        # Before anything decompresses. Both the part read below and
+        # python-docx's own unzipping are unbounded on their own, so the only
+        # safe place for this is ahead of both of them.
+        _assert_within_expansion_budget(data, source.max_decompressed_bytes)
+
         warnings = _detect_out_of_scope_content(data)
         try:
             package = WordDocument(BytesIO(data))
@@ -119,6 +125,36 @@ class DocxParser(BaseDocumentParser):
             parser_version=self.version,
             warnings=warnings,
             witness="a",
+        )
+
+
+def _assert_within_expansion_budget(data: bytes, budget: int) -> None:
+    """Refuse a package that expands past ``budget``.
+
+    The check reads the central directory and sums the declared uncompressed
+    sizes. Nothing is decompressed, so a legitimate manuscript pays nothing and
+    a bomb is refused before it can allocate anything.
+
+    Declared sizes are written by whoever built the archive, so the obvious
+    worry is an archive that under-declares and then over-delivers. It cannot,
+    against this reader: ``zipfile`` stops a member at its declared length and
+    then fails the CRC. Verified directly — an archive holding 8 MiB while
+    declaring 1 KiB yields *zero* bytes and raises ``BadZipFile: Bad CRC-32``.
+    python-docx reads through the same library, so the same bound applies to
+    it. A second, streaming counter was written first and then removed: it
+    would have decompressed every legitimate upload in full to defend against
+    something this library already refuses.
+
+    An archive that over-declares is rejected here, which is the conservative
+    direction and costs an honest file nothing.
+    """
+    with ZipFile(BytesIO(data)) as archive:
+        declared = sum(entry.file_size for entry in archive.infolist())
+
+    if declared > budget:
+        raise SourceTooLargeError(
+            f"This document expands to {declared:,} bytes, over the "
+            f"{budget:,} byte limit for a single upload."
         )
 
 

@@ -12,7 +12,11 @@ from app.config import Settings, get_settings
 from app.models.api import ErrorCode
 from app.models.document import Document, DocumentSummary
 from app.models.identifiers import new_document_id
-from app.services.ingestion.base import DocumentSource, SourceProbe
+from app.services.ingestion.base import (
+    DocumentSource,
+    SourceProbe,
+    SourceTooLargeError,
+)
 from app.services.ingestion.pdf import ScannedDocumentError
 from app.services.ingestion.registry import ParserRegistry, UnsupportedFormatError
 from app.storage.store import DocumentNotFound, SessionStore
@@ -76,12 +80,19 @@ async def upload_document(
         media_type=file.content_type,
         size_bytes=len(data),
         data=data,
+        max_decompressed_bytes=settings.max_decompressed_bytes,
+        max_pages=settings.max_pdf_pages,
     )
 
     try:
         document = parser_class().parse(source)
     except ApiError:
         raise
+    except SourceTooLargeError as exc:
+        # Well-formed, and simply more than we are willing to spend. That is a
+        # different answer from "malformed", and 413 is the honest one: the
+        # file is too large — once unpacked.
+        raise ApiError(ErrorCode.FILE_TOO_LARGE, str(exc)) from exc
     except ScannedDocumentError as exc:
         # A deliberate, honest failure: the file is a scan and OCR does not
         # ship in v1. Returning an empty document would be a silent lie about

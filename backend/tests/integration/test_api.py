@@ -550,3 +550,56 @@ class TestTeiExport:
 
         response = client.get(f"/api/v1/comparisons/{comparison_id}/export/tei")
         assert response.status_code == 404
+
+
+class TestUploadExpansionLimit:
+    """A small archive that unpacks enormously must be refused, not parsed."""
+
+    def bomb(self) -> bytes:
+        import io
+        import zipfile
+
+        buffer = io.BytesIO()
+        with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as archive:
+            archive.writestr(
+                "[Content_Types].xml",
+                '<?xml version="1.0"?><Types xmlns="http://schemas.openxmlformats.org/'
+                'package/2006/content-types"/>',
+            )
+            archive.writestr("word/document.xml", b"<" + b"A" * (8 * 1024 * 1024) + b">")
+        return buffer.getvalue()
+
+    def test_a_zip_bomb_is_refused_as_too_large(self, tmp_path: Path) -> None:
+        data = self.bomb()
+        # It passes the upload cap comfortably; that is the whole problem.
+        assert len(data) < 64 * 1024
+
+        settings = Settings(
+            database_path=str(tmp_path / "bomb.db"),
+            version="test",
+            max_decompressed_bytes=1024 * 1024,
+            rate_limit_enabled=False,
+        )
+        store = SqliteSessionStore(str(tmp_path / "bomb.db"))
+        app = create_app()
+        app.dependency_overrides[get_settings] = lambda: settings
+        app.dependency_overrides[get_store] = lambda: store
+
+        with TestClient(app, raise_server_exceptions=False) as client:
+            response = client.post(
+                "/api/v1/documents",
+                files={
+                    "file": (
+                        "bomb.docx",
+                        data,
+                        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                    )
+                },
+            )
+
+        store.close()
+
+        # 413, not 500 and not a silent success.
+        assert response.status_code == 413, response.text
+        assert response.json()["code"] == "FILE_TOO_LARGE"
+        assert "limit" in response.json()["detail"]

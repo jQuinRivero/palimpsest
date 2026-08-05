@@ -30,6 +30,16 @@ class Settings(BaseSettings):
     #: budget; see docs/11-performance-and-scale.md.
     max_upload_bytes: int = 25 * 1024 * 1024
 
+    #: What one upload may become once decompressed. ``max_upload_bytes``
+    #: bounds compressed bytes only, and a ZIP expands by up to three orders
+    #: of magnitude, so without this a 25 MiB .docx can become tens of
+    #: gigabytes and take the process with it. See docs/12-edge-cases.md.
+    max_decompressed_bytes: int = 128 * 1024 * 1024
+
+    #: Pages one upload may declare. A PDF states its own page count and every
+    #: page is then examined, so a small file can ask for a great deal of work.
+    max_pdf_pages: int = 5_000
+
     inline_blocks_per_comparison: int = 4_000
     inline_tokens_per_comparison: int = 220_000
     max_blocks_per_comparison: int = 12_000

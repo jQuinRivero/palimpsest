@@ -34,6 +34,7 @@ from app.services.ingestion.base import (
     DocumentSource,
     ParserCapabilities,
     SourceProbe,
+    SourceTooLargeError,
 )
 from app.services.ingestion.normalize import NormalizationBlock, normalize
 
@@ -84,6 +85,21 @@ class ScannedDocumentError(Exception):
 
 class MalformedPdfError(Exception):
     """The PDF could not be opened or contains no pages."""
+
+
+def _assert_within_page_budget(page_count: int, budget: int) -> None:
+    """Refuse a document that declares more pages than anyone will read.
+
+    A PDF states its own page count, and a small file can state a very large
+    one — page objects are cheap and shareable. Every page is then examined,
+    so the work a request costs is set by the file rather than by its size.
+    Checked before the first page is touched.
+    """
+    if page_count > budget:
+        raise SourceTooLargeError(
+            f"This document declares {page_count:,} pages, over the "
+            f"{budget:,} page limit for a single upload."
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -311,6 +327,7 @@ class PdfPlumberParser(BaseDocumentParser):
                 page_count = len(pdf.pages)
                 if not page_count:
                     raise MalformedPdfError("PDF contains no pages")
+                _assert_within_page_budget(page_count, source.max_pages)
 
                 for page_number, page in enumerate(pdf.pages, start=1):
                     height = float(page.height or 0)
@@ -331,7 +348,7 @@ class PdfPlumberParser(BaseDocumentParser):
 
                     for line in self._lines_from_page(page, page_number, height):
                         lines.append(line)
-        except (ScannedDocumentError, MalformedPdfError):
+        except (ScannedDocumentError, MalformedPdfError, SourceTooLargeError):
             raise
         except Exception as exc:
             raise MalformedPdfError(f"PDF could not be read: {exc}") from exc
@@ -429,11 +446,12 @@ class PyPdfParser(BaseDocumentParser):
             page_count = len(reader.pages)
             if not page_count:
                 raise MalformedPdfError("PDF contains no pages")
+            _assert_within_page_budget(page_count, source.max_pages)
             pages = [
                 (number, page.extract_text() or "")
                 for number, page in enumerate(reader.pages, start=1)
             ]
-        except MalformedPdfError:
+        except (MalformedPdfError, SourceTooLargeError):
             raise
         except Exception as exc:
             raise MalformedPdfError(f"PDF could not be read: {exc}") from exc

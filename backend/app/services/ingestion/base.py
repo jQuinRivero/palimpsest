@@ -51,6 +51,36 @@ class SourceProbe:
         return self.media_type.split(";", maxsplit=1)[0].strip().casefold()
 
 
+#: Ceiling on what one source may become once decompressed, used when a caller
+#: supplies no budget of its own.
+#:
+#: Deliberately a real number rather than "unlimited". The upload cap bounds
+#: *compressed* bytes, and a ZIP can expand by three orders of magnitude, so a
+#: parser reached through some path that forgot to set a budget must still be
+#: bounded. Sized well above any manuscript this tool will collate — the token
+#: ceiling puts that at a few megabytes of text, tens of megabytes as
+#: WordprocessingML — and far below anything that threatens the process.
+DEFAULT_MAX_DECOMPRESSED_BYTES = 128 * 1024 * 1024
+
+#: Ceiling on pages in one source, used when a caller supplies no limit.
+#:
+#: A PDF's page count is read from its own structure and can be large for a
+#: small file, and every page is then examined. A 100k-word manuscript runs to
+#: a few hundred pages, so this leaves an order of magnitude of headroom while
+#: refusing a document nobody intends to read.
+DEFAULT_MAX_PAGES = 5_000
+
+
+class SourceTooLargeError(Exception):
+    """A witness costs more to read than the caller is willing to spend.
+
+    Distinct from a malformed source: the file is perfectly well formed and is
+    simply too expensive — an archive that expands enormously, or a document
+    declaring more pages than anyone will read. That is a different answer to
+    give the researcher, and a different one to give a monitoring system.
+    """
+
+
 @dataclass(frozen=True, slots=True)
 class DocumentSource:
     """Bytes plus upload metadata passed to a selected parser."""
@@ -60,6 +90,12 @@ class DocumentSource:
     size_bytes: int
     data: bytes | None = None
     stream: BinaryIO | None = None
+    #: What this source is allowed to become once decompressed. Carried with
+    #: the source rather than read from configuration, because ingestion does
+    #: not know about configuration — the API layer supplies it.
+    max_decompressed_bytes: int = DEFAULT_MAX_DECOMPRESSED_BYTES
+    #: How many pages this source may declare before it is refused unread.
+    max_pages: int = DEFAULT_MAX_PAGES
 
     def read_bytes(self) -> bytes:
         """Return the source bytes without changing parser semantics.

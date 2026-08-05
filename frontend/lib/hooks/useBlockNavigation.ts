@@ -72,6 +72,10 @@ function prefersReducedMotion(): boolean {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
+/** About half a second of frames — long enough for a virtualized row to mount,
+ *  short enough that a genuinely absent block stops being chased. */
+const FOCUS_ATTEMPT_FRAMES = 30;
+
 function parseBlockParam(value: string | null, blockCount: number): number | null {
   if (value === null || !/^\d+$/.test(value)) {
     return null;
@@ -162,9 +166,22 @@ export function useBlockNavigation(
       return;
     }
 
-    window.requestAnimationFrame(() => {
+    // Both reading surfaces are virtualized, so the row for a block is mounted
+    // asynchronously and is routinely absent on the first frame after
+    // navigation. Giving up then — which is what a single lookup does — leaves
+    // a shared ?block= link scrolling to the right place while focus stays on
+    // the document body, so a keyboard or screen-reader user arrives nowhere.
+    // Retrying across a bounded run of frames costs nothing when the row is
+    // already there.
+    let framesRemaining = FOCUS_ATTEMPT_FRAMES;
+
+    const attempt = () => {
       const target = findBlockElement(blocks, blockIndex);
       if (!target) {
+        framesRemaining -= 1;
+        if (framesRemaining > 0) {
+          window.requestAnimationFrame(attempt);
+        }
         return;
       }
 
@@ -178,7 +195,9 @@ export function useBlockNavigation(
         inline: "nearest",
         behavior: prefersReducedMotion() ? "auto" : "smooth",
       });
-    });
+    };
+
+    window.requestAnimationFrame(attempt);
   }, [blocks]);
 
   const goTo = useCallback(

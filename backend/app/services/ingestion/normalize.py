@@ -16,7 +16,7 @@ from app.models.document import (
 )
 from app.models.identifiers import block_id
 from app.services.ingestion.dehyphenate import Decision, dehyphenate
-from app.services.ingestion.reflow import fold_ligatures, reflow
+from app.services.ingestion.reflow import fold_ligatures, looks_like_verse, reflow
 
 _BLANK_LINE = re.compile(r"\n[ \t]*\n+")
 _SPACE_RUN = re.compile(r"[ \t]+")
@@ -28,6 +28,12 @@ DEHYPHENATION_WARNING = "DEHYPHENATION_APPLIED"
 
 #: Verse is exempt from reflow because in poetry the line break is the meaning.
 _REFLOW_EXEMPT_KINDS = frozenset({BlockKind.VERSE_LINE, BlockKind.ARTIFACT})
+
+#: Emitted when a block was segmented into verse lines. Segmentation changes
+#: the unit of comparison from the stanza to the line, so it is never silent:
+#: a researcher must be able to see that the tool decided their prose was a
+#: poem. See docs/03-normalization.md.
+VERSE_WARNING = "VERSE_SEGMENTED"
 
 
 @dataclass(frozen=True, slots=True)
@@ -93,6 +99,8 @@ def normalize(
 
     normalized_blocks: list[NormalizationBlock] = []
     join_count = 0
+    verse_passages = 0
+    verse_line_count = 0
 
     # Same-document evidence for dehyphenation is drawn from the whole witness,
     # so a compound written inline in chapter nine can settle an ambiguous
@@ -117,10 +125,33 @@ def normalize(
             normalized_text = _normalize_text(normalized_text)
 
         for text in _split_blocks(normalized_text):
+            kind = _assign_kind(candidate)
+            lines = _verse_lines(text) if kind is BlockKind.PARAGRAPH else None
+
+            if lines is not None:
+                # One block per line. In poetry the line is the unit a scholar
+                # compares, so a stanza-sized block would report a single
+                # changed word as a wholly modified stanza and would hide a
+                # transposed line entirely — moves are detected between
+                # blocks, never inside one.
+                verse_passages += 1
+                verse_line_count += len(lines)
+                for line in lines:
+                    normalized_blocks.append(
+                        NormalizationBlock(
+                            text=line,
+                            kind=BlockKind.VERSE_LINE,
+                            style=candidate.style,
+                            page=candidate.page,
+                            confidence=candidate.confidence,
+                        )
+                    )
+                continue
+
             normalized_blocks.append(
                 NormalizationBlock(
                     text=text,
-                    kind=_assign_kind(candidate),
+                    kind=kind,
                     style=candidate.style,
                     page=candidate.page,
                     confidence=candidate.confidence,
@@ -135,6 +166,21 @@ def normalize(
                     f"Closed up {join_count} line-ending "
                     f"{'hyphen' if join_count == 1 else 'hyphens'} broken across lines. "
                     "Hyphens with evidence of being part of the word were preserved."
+                ),
+                block_id=None,
+            )
+        )
+
+    if verse_passages:
+        base_warnings.append(
+            IngestionWarning(
+                code=VERSE_WARNING,
+                message=(
+                    f"Read {verse_passages} "
+                    f"{'passage' if verse_passages == 1 else 'passages'} as verse and "
+                    f"segmented {verse_line_count} lines. Each line is compared "
+                    "separately; if this text is prose, its blocks have been split "
+                    "more finely than intended."
                 ),
                 block_id=None,
             )
@@ -196,6 +242,43 @@ def _split_blocks(text: str) -> list[str]:
     if not text:
         return []
     return [part.strip() for part in _BLANK_LINE.split(text) if part.strip()]
+
+
+#: Segmentation demands more evidence than reflow exemption does, because the
+#: two decisions fail differently. Wrongly exempting a block from reflow leaves
+#: some line breaks in place; wrongly segmenting one shatters a paragraph into
+#: a dozen blocks and fills the comparison with structure the author never
+#: wrote. A verse line is a phrase, so a run of single words — initials, a
+#: column of figures, a bare list — is not verse however consistent it looks.
+_MIN_MEDIAN_WORDS_PER_VERSE_LINE = 3
+
+
+def _verse_lines(text: str) -> list[str] | None:
+    """Return the block's lines when it reads as verse, otherwise ``None``.
+
+    The measure test is delegated to ``looks_like_verse``, which is
+    deliberately biased toward prose. That bias is the right one here and the
+    asymmetry is worth stating: a missed poem leaves the previous behaviour,
+    whereas a misjudged paragraph is shattered into blocks that no reader of
+    the comparison can tell from real structure.
+
+    A single-line block is never verse. One line carries no evidence of
+    consistent measure, and a short standalone line is far more often a
+    heading, a speaker label, or a date.
+    """
+    if "\n" not in text:
+        return None
+
+    if not looks_like_verse(text.split("\n")):
+        return None
+
+    lines = [line.strip() for line in text.split("\n") if line.strip()]
+    counts = sorted(len(line.split()) for line in lines)
+    median_words = counts[len(counts) // 2]
+    if median_words < _MIN_MEDIAN_WORDS_PER_VERSE_LINE:
+        return None
+
+    return lines
 
 
 def _assign_kind(candidate: NormalizationBlock) -> BlockKind:

@@ -394,6 +394,8 @@ The lock control is a toggle button with `aria-pressed`. Synchronization itself 
 
 `DiffSummaryBar` is persistent chrome for `DiffMetrics` and comparison navigation.
 
+Structural findings — moved, split, merged, and changed stanza breaks — are reported separately from wording and are never folded into the edit count. A comparison can honestly read "No wording changes" and still report structural change; a re-paragraphed chapter and a re-divided poem are both exactly that case, and suppressing the second reading would make the bar assert that nothing happened.
+
 ### Props
 
 ```ts
@@ -441,6 +443,8 @@ Metrics are grouped in a labelled summary region. The minimap is keyboard naviga
 ## DiffBlockRow
 
 `DiffBlockRow` renders one `DiffBlock` for one pane or for unified view.
+
+A `VERSE_LINE` row reads `stanza_boundary` for two purposes: any non-`NONE` value opens a stanza and takes back the blank line segmentation removed, and `A_ONLY` or `B_ONLY` additionally marks a break the two witnesses disagree about. The second is load-bearing, because such a break changes no words and nothing else on the page would show it.
 
 ### Props
 

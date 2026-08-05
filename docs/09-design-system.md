@@ -185,6 +185,8 @@ Verse departs from the paragraph rhythm in two specific ways, and both are legib
 |---|---|
 | Tighter block spacing than a paragraph | Verse lines are lines of one poem, not consecutive paragraphs. Paragraph spacing sets a stanza double-spaced and destroys its shape on the page. |
 | Hanging indent on wrap | A verse line too long for the measure must wrap so that the reader cannot mistake the wrap for a line break. In poetry the line break is the meaning, and a false one misreads the poem. |
+| A line opening a stanza takes the space back | The blank line between stanzas is part of the poem's form, not slack in the layout. |
+| A break one witness lacks is marked | A stanza break that changed between witnesses alters no words, so nothing else on the page would show it. It carries the moved treatment, because that is what it is: a structural change with no wording change. |
 
 The system deliberately chooses generous whitespace over information density. Dense rows make prose behave like log output; `palimpsest` should behave like an annotated page. Alignment gaps in synoptic view are allowed when they preserve correspondence between Manuscript A and Manuscript B. They are preferable to compressing the text or faking pixel-linked scroll.
 

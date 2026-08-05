@@ -66,13 +66,13 @@ This is exactly why v1 avoids it. SQLite session storage with TTL is a deliberat
 
 ### Alignment quality
 
-**Delivered in part.** Verse is now segmented into one block per line, so poetry aligns at the line rather than the stanza and a transposed line reports as `MOVED`. A repeated refrain does not confuse alignment. See [Normalization](./03-normalization.md).
+**Delivered in part.** Verse is now segmented into one block per line, so poetry aligns at the line rather than the stanza and a transposed line reports as `MOVED`. A repeated refrain does not confuse alignment. Stanza boundaries survive segmentation, so a poem re-divided between drafts reports the change rather than reading as identical. See [Normalization](./03-normalization.md) and [ADR-0007](./adr/0007-stanza-boundaries.md).
 
 **Motivation.** Heavily rewritten passages, drama, and repetitive text still expose the limits of block similarity plus LIS move detection.
 
 **What it requires.** Semantic or embedding-assisted alignment may help match paraphrased or heavily revised blocks, but it must not turn the tool into meaning-level diffing. Drama needs structure-aware segmentation so speaker labels and stage directions are not compared as if they were dialogue. User-correctable alignment would let a scholar override a bad match; those corrections could also become training data for future alignment heuristics.
 
-Two verse-specific gaps remain. Stanza boundaries are lost once a poem is segmented, because `DiffBlock` carries no stanza membership — so an added or removed stanza break is currently invisible, and the TEI export can only approximate `<lg>`. And verse whose lines run long, much blank verse among it, falls outside the conservative detection threshold and is read as prose. Both want evidence from real use before being tuned, and the first needs a schema change through an ADR.
+One verse-specific gap remains: verse whose lines run long, much blank verse among it, falls outside the conservative detection threshold and is read as prose. That wants evidence from real use before anyone tunes a threshold, because the cost of loosening it is shredding paragraphs.
 
 **Existing seam.** `backend/app/services/diffing/alignment.py`, `DiffOptions.align_threshold`, `DiffOptions.move_threshold`, `DiffOptions.detect_moves`, `DiffBlock.group_id`, `BlockKind.VERSE_LINE`, and URL state `?moves=on|off`.
 

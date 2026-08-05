@@ -196,6 +196,8 @@ The second rule earns its place: without it, `A\nB\nC` is read as a poem.
 
 Detection carries an `IngestionWarning` (`VERSE_SEGMENTED`) rather than being applied silently. Deciding a text is verse changes the unit of comparison, and a researcher must be able to see that the tool made that call — most of all when it made it wrongly.
 
+Segmentation would otherwise discard the blank lines between stanzas, so the first line of each stanza carries `Block.starts_stanza`. A stanza break is a formal revision that changes no words; without this the comparison would report a re-divided poem as identical. See [Data schema](./05-data-schema.md) and [ADR-0007](./adr/0007-stanza-boundaries.md).
+
 Verse whose lines run long — much blank verse — will not be detected, and is left as prose. That is the conservative bias working as intended rather than a defect to be tuned away without evidence.
 
 Worked example:

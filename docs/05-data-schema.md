@@ -39,6 +39,12 @@ class BlockStatus(StrEnum):
     SPLIT     = "SPLIT"       # one A block became several B blocks
     MERGED    = "MERGED"      # several A blocks became one B block
 
+class StanzaBoundary(StrEnum):
+    NONE   = "NONE"     # neither witness begins a stanza here
+    SHARED = "SHARED"   # both witnesses begin a stanza here
+    A_ONLY = "A_ONLY"   # only Manuscript A begins a stanza here
+    B_ONLY = "B_ONLY"   # only Manuscript B begins a stanza here
+
 class BlockKind(StrEnum):
     PARAGRAPH  = "PARAGRAPH"
     HEADING    = "HEADING"
@@ -78,6 +84,7 @@ class Block(BaseModel):
     page: int | None = None          # 1-based, PDF only
     char_start: int                  # offset into the reconstructed full text
     char_end: int
+    starts_stanza: bool = False      # verse only; set during segmentation, see ADR-0007
     confidence: float | None = None  # reserved for OCR
     bbox: BoundingBox | None = None  # reserved for OCR
 
@@ -163,6 +170,7 @@ class DiffBlock(BaseModel):
     metrics: BlockMetrics
     move_distance: int | None = None # signed block displacement; non-null only when MOVED
     group_id: str | None = None      # shared by all members of a SPLIT or MERGED group
+    stanza_boundary: StanzaBoundary | None = None  # non-null only when VERSE_LINE
 
 class DiffMetrics(BaseModel):
     similarity: float
@@ -174,6 +182,7 @@ class DiffMetrics(BaseModel):
     blocks_moved: int
     blocks_split: int
     blocks_merged: int
+    stanza_breaks_changed: int
     a_word_count: int
     b_word_count: int
 
@@ -215,6 +224,14 @@ This is a deliberate trade. Emitting one object per word would triple the payloa
 
 The consequence for metrics: **`insertions`, `deletions`, `edit_count`, `unchanged_tokens`, `a_word_count`, and `b_word_count` are all counts of words, never counts of `Token` objects.** A client that computes `block.tokens.filter(t => t.status === "INSERTION").length` will get a different and wrong number. It should not be computing them at all — the payload carries them.
 
+### Stanza boundaries survive segmentation
+
+Verse is segmented into one block per line, which flattens the blank lines between stanzas: in a list of blocks, two consecutive stanzas are otherwise indistinguishable from one longer one.
+
+That would not be a cosmetic loss. Dividing an octave into two quatrains changes no words, so without a record of where stanzas begin the comparison reports similarity 1.000 and no finding at all — a confident wrong answer about exactly what the tool exists to show.
+
+`Block.starts_stanza` is therefore set during segmentation, the only moment the blank line still exists. `DiffBlock.stanza_boundary` reports what the two witnesses say at the same position, and `A_ONLY` or `B_ONLY` **is** the finding: a break in one and not the other. `DiffMetrics.stanza_breaks_changed` counts them, so the summary remains true when `blocks` is a window. See [ADR-0007](./adr/0007-stanza-boundaries.md).
+
 ### Invariants
 
 These hold for every payload the engine emits and are asserted directly in [testing](./13-testing-strategy.md):
@@ -226,8 +243,9 @@ These hold for every payload the engine emits and are asserted directly in [test
 5. `a_index` is `null` if and only if `status == INSERTED`. `b_index` is `null` if and only if `status == DELETED`.
 6. `move_distance` is non-null if and only if `status == MOVED`.
 7. `group_id` is non-null if and only if `status` is `SPLIT` or `MERGED`, and every member of a group shares one value.
-8. `blocks` is ordered for reading: by `b_index` where present, otherwise positioned at the deleted block's place in the A sequence.
-9. When `truncated` is `false`, `len(blocks) == total_blocks`.
+8. `stanza_boundary` is non-null if and only if `kind` is `VERSE_LINE`.
+9. `blocks` is ordered for reading: by `b_index` where present, otherwise positioned at the deleted block's place in the A sequence.
+10. When `truncated` is `false`, `len(blocks) == total_blocks`.
 
 Invariant 1 is the strongest of these. It means the payload is lossless with respect to both witnesses, so a client — or an archival consumer years later — can reconstruct either manuscript from the comparison alone.
 
@@ -305,6 +323,7 @@ A three-block comparison exercising an unchanged heading, a modified paragraph, 
     "blocks_moved": 0,
     "blocks_split": 2,
     "blocks_merged": 0,
+    "stanza_breaks_changed": 0,
     "a_word_count": 21,
     "b_word_count": 19
   },
@@ -327,7 +346,8 @@ A three-block comparison exercising an unchanged heading, a modified paragraph, 
         "deletions": 0, "churn": 0.0
       },
       "move_distance": null,
-      "group_id": null
+      "group_id": null,
+      "stanza_boundary": null
     },
     {
       "id": "dbk_0002",
@@ -363,7 +383,8 @@ A three-block comparison exercising an unchanged heading, a modified paragraph, 
         "deletions": 1, "churn": 0.2308
       },
       "move_distance": null,
-      "group_id": null
+      "group_id": null,
+      "stanza_boundary": null
     },
     {
       "id": "dbk_0003",
@@ -381,7 +402,8 @@ A three-block comparison exercising an unchanged heading, a modified paragraph, 
         "deletions": 0, "churn": 0.0
       },
       "move_distance": null,
-      "group_id": "grp_0001"
+      "group_id": "grp_0001",
+      "stanza_boundary": null
     },
     {
       "id": "dbk_0004",
@@ -409,7 +431,8 @@ A three-block comparison exercising an unchanged heading, a modified paragraph, 
         "deletions": 4, "churn": 0.3846
       },
       "move_distance": null,
-      "group_id": "grp_0001"
+      "group_id": "grp_0001",
+      "stanza_boundary": null
     }
   ]
 }

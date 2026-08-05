@@ -304,7 +304,8 @@ Accept: application/json
         "churn": 0.1667
       },
       "move_distance": null,
-      "group_id": null
+      "group_id": null,
+      "stanza_boundary": null
     },
     {
       "id": "dbk_0002",
@@ -331,7 +332,8 @@ Accept: application/json
         "churn": 0.0
       },
       "move_distance": null,
-      "group_id": null
+      "group_id": null,
+      "stanza_boundary": null
     }
   ],
   "metrics": {
@@ -344,6 +346,7 @@ Accept: application/json
     "blocks_moved": 0,
     "blocks_split": 0,
     "blocks_merged": 0,
+    "stanza_breaks_changed": 0,
     "a_word_count": 12,
     "b_word_count": 12
   },
@@ -454,6 +457,7 @@ Accept: application/json
     "blocks_moved": 0,
     "blocks_split": 0,
     "blocks_merged": 0,
+    "stanza_breaks_changed": 0,
     "a_word_count": 12,
     "b_word_count": 12
   },
@@ -549,7 +553,8 @@ Accept: application/json
         "churn": 0.1667
       },
       "move_distance": null,
-      "group_id": null
+      "group_id": null,
+      "stanza_boundary": null
     }
   ],
   "offset": 0,
@@ -627,7 +632,7 @@ Host: localhost:8000
 | Reconstruction | Selecting every `<rdg wit="#A">` and concatenating reproduces the Manuscript A pane word for word, and likewise for B. This is what makes the file an archive rather than a rendering. |
 | Element identity | Every block element carries `@xml:id` derived from `DiffBlock.id`, so citations and `<link>` targets are stable. |
 | Structural relations | `MOVED`, `SPLIT`, and `MERGED` appear as `<linkGrp type="moved\|split\|merged">` in `<back>`. One split is one `<link>` naming every member, not one link per member. |
-| Verse | `VERSE_LINE` blocks export as `<l>` gathered into an `<lg>`, because a bare `<l>` is not how TEI presents verse. A contiguous run of verse lines becomes one line group — the payload carries no stanza membership, so the grouping is accurate about lines and approximate about stanzas. Inventing a stanza break would put structure into the file that nothing in the collation supports. |
+| Verse | `VERSE_LINE` blocks export as `<l>` gathered into an `<lg>`, because a bare `<l>` is not how TEI presents verse. A new line group begins at each stanza, which `DiffBlock.stanza_boundary` records. Where the witnesses disagree about a break the group still divides there: a TEI document has one body, so it takes the division either witness attests rather than inventing a third structure that neither has. |
 | Completeness | A windowed or still-pending comparison is never exported. A truncated screen shows the reader it is truncated; a TEI file does not. |
 
 ### Pending response

@@ -178,10 +178,8 @@ export function ManuscriptUploader({
   onError,
 }: ManuscriptUploaderProps) {
   const router = useRouter();
-  const inputRefs = {
-    a: useRef<HTMLInputElement>(null),
-    b: useRef<HTMLInputElement>(null),
-  };
+  const inputRefA = useRef<HTMLInputElement>(null);
+  const inputRefB = useRef<HTMLInputElement>(null);
   const [capabilities, setCapabilities] = useState<CapabilitiesResponse | null>(null);
   const [capabilitiesProblem, setCapabilitiesProblem] = useState<ApiProblem | null>(null);
   const [slots, setSlots] = useState<Record<SlotKey, WitnessSlot>>(emptySlots);
@@ -422,10 +420,10 @@ export function ManuscriptUploader({
             slot={slots.a}
             accept={accept}
             capabilitiesReady={Boolean(capabilities)}
-            inputRef={inputRefs.a}
+            inputRef={inputRefA}
             isDragging={isDragging.a}
             pasteDraft={pasteDrafts.a}
-            onBrowse={() => inputRefs.a.current?.click()}
+            onBrowse={() => inputRefA.current?.click()}
             onFile={(file) => void selectFile("a", file)}
             onPasteDraft={(text) => setPasteDrafts((current) => ({ ...current, a: text }))}
             onPasteUpload={() => void pasteAsFile("a")}
@@ -449,10 +447,10 @@ export function ManuscriptUploader({
             slot={slots.b}
             accept={accept}
             capabilitiesReady={Boolean(capabilities)}
-            inputRef={inputRefs.b}
+            inputRef={inputRefB}
             isDragging={isDragging.b}
             pasteDraft={pasteDrafts.b}
-            onBrowse={() => inputRefs.b.current?.click()}
+            onBrowse={() => inputRefB.current?.click()}
             onFile={(file) => void selectFile("b", file)}
             onPasteDraft={(text) => setPasteDrafts((current) => ({ ...current, b: text }))}
             onPasteUpload={() => void pasteAsFile("b")}

@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { gotoComparison } from "./helpers";
 import AxeBuilder from "@axe-core/playwright";
 
 /**
@@ -58,7 +59,7 @@ async function comparisonFor(
 
 test("a poem is read as lines, not as a paragraph", async ({ page, request }) => {
   const id = await comparisonFor(request, STANZA, REVISED);
-  await page.goto(`/c/${id}?view=unified`);
+  await gotoComparison(page, `/c/${id}?view=unified`);
 
   const verse = page.locator('[data-testid^="diff-block-row-"][data-kind="VERSE_LINE"]');
   await expect(verse).toHaveCount(4);
@@ -77,7 +78,7 @@ test("a transposed line reads as a move with no wording change", async ({
   request,
 }) => {
   const id = await comparisonFor(request, STANZA, TRANSPOSED);
-  await page.goto(`/c/${id}?view=unified`);
+  await gotoComparison(page, `/c/${id}?view=unified`);
 
   await expect(
     page.locator('[data-kind="VERSE_LINE"][data-status="MOVED"]').first(),
@@ -102,7 +103,7 @@ test("the reader is told the text was read as verse", async ({ page, request }) 
   );
   expect(codes).toContain("VERSE_SEGMENTED");
 
-  await page.goto(`/c/${id}`);
+  await gotoComparison(page, `/c/${id}`);
   await expect(page.getByTestId("diff-viewer")).toBeVisible();
 });
 
@@ -111,7 +112,7 @@ test("verse lines are set closer together than paragraphs", async ({
   request,
 }) => {
   const id = await comparisonFor(request, STANZA, REVISED);
-  await page.goto(`/c/${id}?view=unified`);
+  await gotoComparison(page, `/c/${id}?view=unified`);
 
   // Wait for a row to exist before measuring it, rather than assuming the
   // render has landed. Reading computed style off a null element fails in a
@@ -131,7 +132,7 @@ test("verse rendering has no accessibility violations", async ({ page, request }
   const id = await comparisonFor(request, STANZA, REVISED);
 
   for (const view of ["synoptic", "unified"]) {
-    await page.goto(`/c/${id}?view=${view}`);
+    await gotoComparison(page, `/c/${id}?view=${view}`);
     await expect(page.getByTestId("diff-viewer")).toBeVisible();
 
     const results = await new AxeBuilder({ page })

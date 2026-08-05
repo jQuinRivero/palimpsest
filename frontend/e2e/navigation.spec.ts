@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
-import { createComparison } from "./helpers";
+import { createComparison, gotoComparison } from "./helpers";
 
 const NAV_A =
   "The opening paragraph is shared by both witnesses.\n\n" +
@@ -25,7 +25,7 @@ test.describe("changed block navigation", () => {
   }) => {
     const comparisonId = await createComparison(request, NAV_A, NAV_B);
 
-    await page.goto(`/c/${comparisonId}?view=unified`);
+    await gotoComparison(page, `/c/${comparisonId}?view=unified`);
     // Visible is not the same as interactive: the viewer is server-rendered,
     // so a click can land before its handler exists.
     await expect(page.getByTestId("diff-viewer")).toHaveAttribute(
@@ -50,7 +50,7 @@ test.describe("changed block navigation", () => {
   test("deep links land on the requested block", async ({ page, request }) => {
     const comparisonId = await createComparison(request, NAV_A, NAV_B);
 
-    await page.goto(`/c/${comparisonId}?view=unified&block=2`);
+    await gotoComparison(page, `/c/${comparisonId}?view=unified&block=2`);
 
     await expect(page.getByTestId("change-position")).toContainText("Change 2 of 3");
     await expect.poll(() => currentBlockParameter(page)).toBe("2");
@@ -63,7 +63,7 @@ test.describe("changed block navigation", () => {
   test("keyboard bindings work but ignore text entry", async ({ page, request }) => {
     const comparisonId = await createComparison(request, NAV_A, NAV_B);
 
-    await page.goto(`/c/${comparisonId}?view=unified`);
+    await gotoComparison(page, `/c/${comparisonId}?view=unified`);
     // The viewer is server-rendered, so it is on screen and looks ready before
     // its keyboard bindings exist. Pressing a key in that window loses the
     // keystroke with no error anywhere.
@@ -104,7 +104,7 @@ test.describe("changed block navigation", () => {
   }) => {
     const comparisonId = await createComparison(request, NAV_A, NAV_B);
 
-    await page.goto(`/c/${comparisonId}?view=unified&block=2`);
+    await gotoComparison(page, `/c/${comparisonId}?view=unified&block=2`);
     await expect(page.getByTestId("change-navigator")).toBeVisible();
 
     const results = await new AxeBuilder({ page })

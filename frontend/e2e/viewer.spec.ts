@@ -1,23 +1,23 @@
 import { test, expect } from "@playwright/test";
-import { createComparison, identicalWitness } from "./helpers";
+import { createComparison, gotoComparison, identicalWitness } from "./helpers";
 
 test("switches reading modes and honors unified deep links", async ({ page, request }) => {
   const comparisonId = await createComparison(request);
 
-  await page.goto(`/c/${comparisonId}`);
+  await gotoComparison(page, `/c/${comparisonId}`);
   await expect(page.locator('[data-testid="diff-viewer"][data-view="synoptic"]')).toBeVisible();
 
   await page.getByRole("button", { name: "unified" }).click();
   await expect(page.locator('[data-testid="diff-viewer"][data-view="unified"]')).toBeVisible();
 
-  await page.goto(`/c/${comparisonId}?view=unified`);
+  await gotoComparison(page, `/c/${comparisonId}?view=unified`);
   await expect(page.locator('[data-testid="diff-viewer"][data-view="unified"]')).toBeVisible();
 });
 
 test("summarizes identical witnesses without wording changes", async ({ page, request }) => {
   const comparisonId = await createComparison(request, identicalWitness, identicalWitness);
 
-  await page.goto(`/c/${comparisonId}`);
+  await gotoComparison(page, `/c/${comparisonId}`);
 
   await expect(page.getByTestId("diff-summary-bar")).toContainText("No wording changes");
 });

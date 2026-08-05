@@ -1,4 +1,21 @@
 import { defineConfig, devices } from "@playwright/test";
+import os from "node:os";
+
+/**
+ * Parallelism is capped rather than left to the default.
+ *
+ * The suite contains genuinely heavy tests — printing a three-hundred-block
+ * comparison renders every row unvirtualized in the browser — and they run
+ * against a single-process API. Saturating the machine starves whichever
+ * worker happens to be waiting on a UI assertion, which surfaces as a
+ * different unrelated test timing out on each run rather than as anything
+ * that points at the real cause. Measured at the default six workers: one
+ * failure in six runs. At three: none in five.
+ *
+ * The cap keeps Playwright's own core-based heuristic, so a small CI runner
+ * still gets fewer workers than this ceiling rather than more.
+ */
+const workers = Math.max(1, Math.min(3, Math.floor(os.cpus().length / 2)));
 
 /**
  * The window threshold is lowered for end-to-end runs so that `windowing.spec`
@@ -29,6 +46,7 @@ export default defineConfig({
     timeout: 15_000,
   },
   fullyParallel: true,
+  workers,
   reporter: "list",
   use: {
     baseURL: "http://localhost:3000",

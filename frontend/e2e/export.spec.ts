@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { gotoComparison } from "./helpers";
 import AxeBuilder from "@axe-core/playwright";
 import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -45,7 +46,7 @@ test("the export control downloads a TEI file naming both witnesses", async ({
   request,
 }) => {
   const id = await comparisonFor(request);
-  await page.goto(`/c/${id}`);
+  await gotoComparison(page, `/c/${id}`);
 
   const control = page.getByTestId("export-tei");
   await expect(control).toBeVisible();
@@ -79,7 +80,7 @@ test("the exported file parses as XML in the browser", async ({ page, request })
   // Navigate first so the fetch runs from the application's own origin. That
   // makes this a CORS check as well as a well-formedness one: a third-party
   // tool reading the export from a browser needs both to hold.
-  await page.goto(`/c/${id}`);
+  await gotoComparison(page, `/c/${id}`);
 
   // DOMParser is the cheapest honest well-formedness check available here,
   // and it runs on the bytes the endpoint actually served.
@@ -104,7 +105,7 @@ test("the exported file parses as XML in the browser", async ({ page, request })
 
 test("the export control has no accessibility violations", async ({ page, request }) => {
   const id = await comparisonFor(request);
-  await page.goto(`/c/${id}`);
+  await gotoComparison(page, `/c/${id}`);
   await expect(page.getByTestId("export-tei")).toBeVisible();
 
   const results = await new AxeBuilder({ page })

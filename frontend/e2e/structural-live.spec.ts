@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { gotoComparison } from "./helpers";
 import AxeBuilder from "@axe-core/playwright";
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -77,7 +78,7 @@ test("a moved passage reads as moved, not as a deletion and an insertion", async
   request,
 }) => {
   const id = await comparisonFor(request, MOVE_A, MOVE_B);
-  await page.goto(`/c/${id}`);
+  await gotoComparison(page, `/c/${id}`);
 
   await expect(page.getByTestId("diff-viewer")).toBeVisible();
 
@@ -103,7 +104,7 @@ test("a paragraph split reads as a split group with no wording change", async ({
   request,
 }) => {
   const id = await comparisonFor(request, SPLIT_A, SPLIT_B);
-  await page.goto(`/c/${id}`);
+  await gotoComparison(page, `/c/${id}`);
 
   const rows = page.locator('[data-testid^="diff-block-row-"][data-status="SPLIT"]');
   await expect(rows.first()).toBeVisible();
@@ -127,7 +128,7 @@ test("a merged pair reads as a merge group with no wording change", async ({
   request,
 }) => {
   const id = await comparisonFor(request, MERGE_A, MERGE_B);
-  await page.goto(`/c/${id}`);
+  await gotoComparison(page, `/c/${id}`);
 
   const rows = page.locator('[data-testid^="diff-block-row-"][data-status="MERGED"]');
   await expect(rows.first()).toBeVisible();
@@ -147,7 +148,7 @@ test("the moves toggle suppresses move affordances and survives sharing", async 
 }) => {
   const id = await comparisonFor(request, MOVE_A, MOVE_B);
 
-  await page.goto(`/c/${id}`);
+  await gotoComparison(page, `/c/${id}`);
   await expect(page.getByTestId("diff-viewer")).toHaveAttribute("data-moves", "on");
   const connector = page.locator('[data-testid^="block-connector-"]').first();
   await expect(connector).toHaveAttribute("data-visible", "true");
@@ -162,7 +163,7 @@ test("the moves toggle suppresses move affordances and survives sharing", async 
   await expect(page.getByTestId("gutter-marker-MOVED").first()).toHaveText("");
 
   // A researcher must be able to send a colleague the suppressed view.
-  await page.goto(`/c/${id}?moves=off`);
+  await gotoComparison(page, `/c/${id}?moves=off`);
   await expect(page.getByTestId("diff-viewer")).toHaveAttribute("data-moves", "off");
   await expect(
     page.locator('[data-testid^="block-connector-"]').first(),
@@ -176,7 +177,7 @@ test("structural rendering has no accessibility violations", async ({
   const id = await comparisonFor(request, MOVE_A, MOVE_B);
 
   for (const view of ["synoptic", "unified"]) {
-    await page.goto(`/c/${id}?view=${view}`);
+    await gotoComparison(page, `/c/${id}?view=${view}`);
     await expect(page.getByTestId("diff-viewer")).toBeVisible();
 
     const results = await new AxeBuilder({ page })

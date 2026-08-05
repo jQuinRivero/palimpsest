@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { gotoComparison } from "./helpers";
 
 /**
  * What is actually in the DOM.
@@ -62,7 +63,7 @@ test.beforeAll(async ({ request }) => {
 });
 
 async function openLoaded(page: import("@playwright/test").Page, view: string) {
-  await page.goto(`/c/${comparisonId}?view=${view}`);
+  await gotoComparison(page, `/c/${comparisonId}?view=${view}`);
   await expect(page.getByTestId("block-loading-status")).toHaveAttribute(
     "data-state",
     "complete",
@@ -114,7 +115,7 @@ test("unified navigation reaches a block outside the mounted window", async ({ p
   // already being in the DOM. It now goes through the virtualizer like
   // synoptic, and this is what proves it.
   const target = totalBlocks - 3;
-  await page.goto(`/c/${comparisonId}?view=unified&block=${target}`);
+  await gotoComparison(page, `/c/${comparisonId}?view=unified&block=${target}`);
   await expect(page.getByTestId("block-loading-status")).toHaveAttribute(
     "data-state",
     "complete",

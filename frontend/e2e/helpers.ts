@@ -1,4 +1,4 @@
-import { expect, type APIRequestContext } from "@playwright/test";
+import { expect, type APIRequestContext, type Page } from "@playwright/test";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
 
@@ -62,4 +62,22 @@ export async function createComparison(
   expect(response.ok(), await response.text()).toBeTruthy();
   const comparison = (await response.json()) as ComparisonResult;
   return comparison.comparison_id;
+}
+
+/**
+ * Navigate to a comparison and wait until the viewer can actually respond.
+ *
+ * The page is server-rendered, so the reading surface, the toggles and the
+ * navigator are all on screen — and inert — before React attaches anything to
+ * them. A click or a keypress in that window is discarded with no error, which
+ * surfaces as a test that passes alone and fails in a full run, on a different
+ * assertion each time.
+ *
+ * Waiting on visibility is not enough for the same reason: the markup being
+ * present is precisely what makes the gap invisible. `data-hydrated` is set by
+ * `DiffViewer` in an effect, so it appears only once the handlers exist.
+ */
+export async function gotoComparison(page: Page, path: string): Promise<void> {
+  await page.goto(path);
+  await expect(page.getByTestId("diff-viewer")).toHaveAttribute("data-hydrated", "true");
 }

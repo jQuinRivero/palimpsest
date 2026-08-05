@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { gotoComparison } from "./helpers";
 
 /**
  * Windowed comparisons.
@@ -91,7 +92,7 @@ test.beforeAll(async ({ request }) => {
 
 test("a truncated comparison says so, then loads the whole collation", async ({ page }) => {
   await withSlowWindowLoading(page);
-  await page.goto(`/c/${comparisonId}`);
+  await gotoComparison(page, `/c/${comparisonId}`);
 
   const status = page.getByTestId("block-loading-status");
 
@@ -107,7 +108,7 @@ test("the change count is marked provisional until everything has arrived", asyn
   page,
 }) => {
   await withSlowWindowLoading(page);
-  await page.goto(`/c/${comparisonId}`);
+  await gotoComparison(page, `/c/${comparisonId}`);
 
   const position = page.getByTestId("change-position");
   await expect(position).toContainText("so far");
@@ -126,7 +127,7 @@ test("a deep link past the first window survives and lands", async ({ page }) =>
   expect(target).toBeGreaterThan(firstWindow);
 
   await withSlowWindowLoading(page);
-  await page.goto(`/c/${comparisonId}?block=${target}`);
+  await gotoComparison(page, `/c/${comparisonId}?block=${target}`);
 
   // The parameter must still be there while the target is unloaded.
   await expect(page.getByTestId("block-loading-status")).toHaveAttribute(
@@ -144,7 +145,7 @@ test("a deep link past the first window survives and lands", async ({ page }) =>
 });
 
 test("navigation counts changes beyond the first window", async ({ page }) => {
-  await page.goto(`/c/${comparisonId}`);
+  await gotoComparison(page, `/c/${comparisonId}`);
   await expect(page.getByTestId("block-loading-status")).toHaveAttribute(
     "data-state",
     "complete",

@@ -74,6 +74,8 @@ This is exactly why v1 avoids it. SQLite session storage with TTL is a deliberat
 
 One verse-specific gap remains: verse whose lines run long, much blank verse among it, falls outside the conservative detection threshold and is read as prose. That wants evidence from real use before anyone tunes a threshold, because the cost of loosening it is shredding paragraphs.
 
+A second is narrower and known. A poem written in Word with one paragraph per line — pressing Enter rather than Shift+Enter — aligns correctly line by line but keeps `PARAGRAPH` as its kind, so it gets neither verse typography nor `<l>` in the TEI export. Detecting verse *across* sibling blocks is a different heuristic from detecting it within one, and a riskier one: a list, a run of short paragraphs, or dialogue would all be candidates. It needs its own evidence rather than an extension of the current rule.
+
 **Existing seam.** `backend/app/services/diffing/alignment.py`, `DiffOptions.align_threshold`, `DiffOptions.move_threshold`, `DiffOptions.detect_moves`, `DiffBlock.group_id`, `BlockKind.VERSE_LINE`, and URL state `?moves=on|off`.
 
 ### Scale

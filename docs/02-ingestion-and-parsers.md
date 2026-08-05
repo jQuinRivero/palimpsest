@@ -175,6 +175,12 @@ Known failure modes:
 
 Inline formatting is stripped before block text reaches the diff engine. A diff of prose should not report asterisks, underscores, or link delimiters as textual variants unless those characters are literally part of the text. This is slightly surprising but intentional: `*dark*` and `dark` compare as the same word by default because the scholar is comparing witness text, not Markdown markup.
 
+**Line breaks within a paragraph are preserved, not joined.** CommonMark renders a soft break as a space, and a renderer should. This is not a renderer: the line breaks an author typed are evidence about the text, and whether they are layout or meaning is a decision [normalization](./03-normalization.md) owns — it declines to reflow Markdown for exactly that reason, and cannot apply that policy to lines a parser has already merged.
+
+The consequence of joining them was concrete. The same sonnet read as four `VERSE_LINE` blocks from a `.txt` file and as a single `PARAGRAPH` from a `.md` file, and collating the two reported four `MERGED` blocks — a structural revision produced entirely by the file extension. **A container format is not a revision**, and the collation must not claim otherwise.
+
+Hard-wrapped prose is unaffected: its lines sit at a prose measure, so verse detection declines them, and whitespace normalization means a wrapped witness still compares equal to an unwrapped one.
+
 Worked example:
 
 ```markdown

@@ -11,7 +11,6 @@ import io
 import json
 import sys
 import urllib.request
-import zipfile
 
 BASE = "http://127.0.0.1:8000"
 
@@ -32,7 +31,8 @@ def build_docx(paragraphs: list[str]) -> bytes:
 
 def build_pdf(paragraphs: list[str]) -> bytes:
     sys.path.insert(0, "tests")
-    from pdf_builder import build_pdf as make, prose_page
+    from pdf_builder import build_pdf as make
+    from pdf_builder import prose_page
 
     return make([prose_page(paragraphs)])
 
@@ -105,7 +105,7 @@ for label, build, filename, media_type in FORMATS:
     try:
         a = upload(build(PROSE_A), filename, media_type, f"A ({label})")
         b = upload(build(PROSE_B), filename, media_type, f"B ({label})")
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         print(f"{label:8} UPLOAD FAILED: {exc}")
         failures += 1
         continue

@@ -19,9 +19,7 @@ def licence_of(dist: object) -> str:
     meta = dist.metadata  # type: ignore[attr-defined]
     value = meta.get("License-Expression") or ""
     if not value or len(value) > 60:
-        classifiers = [
-            c for c in (meta.get_all("Classifier") or []) if c.startswith("License ::")
-        ]
+        classifiers = [c for c in (meta.get_all("Classifier") or []) if c.startswith("License ::")]
         if classifiers:
             value = "; ".join(c.split("::")[-1].strip() for c in classifiers)
     if not value:

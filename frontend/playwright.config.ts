@@ -37,6 +37,13 @@ export const E2E_WINDOW_BLOCK_THRESHOLD = 25;
 const E2E_API_ENV = {
   PALIMPSEST_COMPARISON_WINDOW_BLOCK_THRESHOLD: String(E2E_WINDOW_BLOCK_THRESHOLD),
   PALIMPSEST_DEFAULT_BLOCK_PAGE_LIMIT: "10",
+  // The whole suite arrives from one client address in bursts, which is
+  // precisely the traffic shape the limiter exists to reject. A throttled
+  // upload fails a fixture in milliseconds and reads as an unrelated
+  // assertion failing, so the suite spends its time diagnosing itself.
+  // Nothing is lost: the limiter has its own integration test, and the other
+  // integration tests already disable it.
+  PALIMPSEST_RATE_LIMIT_ENABLED: "false",
 };
 
 export default defineConfig({

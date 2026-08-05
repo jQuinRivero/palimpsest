@@ -161,6 +161,7 @@ jobs:
         env:
           PALIMPSEST_COMPARISON_WINDOW_BLOCK_THRESHOLD: "25"
           PALIMPSEST_DEFAULT_BLOCK_PAGE_LIMIT: "10"
+          PALIMPSEST_RATE_LIMIT_ENABLED: "false"
         run: |
           uv run uvicorn app.main:app --host 127.0.0.1 --port 8000 &
           for _ in $(seq 1 40); do

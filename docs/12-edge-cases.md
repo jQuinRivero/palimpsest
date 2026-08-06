@@ -208,6 +208,18 @@ First column sentence Second column sentence continues first column continues se
 
 **Handling policy.** If a deterministic repair is available, repair and emit `IngestionWarning` code `ENCODING_REPAIRED`. Otherwise return `MALFORMED_DOCUMENT` when the witness cannot be read as text, or emit `IngestionWarning` code `ENCODING_UNCERTAIN` for partial extraction.
 
+### Control characters in a witness
+
+**Symptom.** A witness contains `NUL`, `ESC`, a vertical tab, or another C0 control — usually because it was decoded with the wrong encoding, or salvaged from a binary. Nothing looks wrong: ingestion succeeds, the comparison renders, the metrics are sane. The TEI export then produces a file no XML parser will open.
+
+**Why it happens.** XML 1.0 admits only tab, newline, and carriage return below `U+0020`, and there is no escape for the others — a numeric character reference is invalid too. `ElementTree` escapes markup but does not validate character ranges, so it serializes such a character intact and reports success.
+
+**Detection rule.** Any C0 control other than tab, newline, and carriage return, or `DEL`, in block text or in the title.
+
+**Handling policy.** Remove them during normalization and emit `IngestionWarning` code `CONTROL_CHARACTERS_REMOVED`. Form feed is converted to a line break instead, because it is a page break that someone meant, and conversion loses nothing so it is not announced. See [Normalization](./03-normalization.md).
+
+This is fixed at the canonical `Document` rather than in the export, so that representability is something every consumer may assume rather than something each must re-check. Markup metacharacters need no handling: `ElementTree` escapes them, and the export tests keep it honest.
+
 ### Page break mid-sentence and mid-word
 
 **Symptom.** Page boundaries interrupt prose:

@@ -103,16 +103,26 @@ Whitespace normalization makes layout-neutral spacing comparable while preservin
 Rules:
 
 1. Normalize line endings to `\n`.
-2. Strip trailing whitespace.
-3. Collapse internal runs of spaces and tabs to one space where the parser has already established prose flow.
-4. Preserve blank lines long enough for paragraph and verse decisions, then remove them from final `Block.text`.
+2. Convert form feed to a line break. A form feed is a page break in a plain-text witness, so it is a break someone meant; it cannot survive as itself because XML has no room for it.
+3. Remove C0 control characters other than tab and newline, and `DEL`.
+4. Strip trailing whitespace.
+5. Collapse internal runs of spaces and tabs to one space where the parser has already established prose flow.
+6. Preserve blank lines long enough for paragraph and verse decisions, then remove them from final `Block.text`.
 
 | Before | After |
 |---|---|
 | `This  is\t spaced.  ` | `This is spaced.` |
 | `Line one\r\nLine two` | `Line one\nLine two` |
+| `Chapter One.\n\n\fChapter Two.` | two blocks, no form feed |
+| `the best\x00 of times` | `the best of times` |
 
 Rationale: spacing introduced by export tools should not dominate the diff, but spacing that marks block boundaries must survive until segmentation.
+
+Rule 3 exists because XML 1.0 admits only tab, newline, and carriage return below `U+0020`, and offers no escape for the rest — not even a numeric character reference. The TEI export is built with `ElementTree`, which escapes markup but does not validate character ranges, so a control character that reaches canonical text is serialized intact and the researcher receives an archive no XML parser will open, with nothing having failed along the way. Representability is therefore a guarantee of the canonical `Document`, not a concern of each consumer.
+
+Removal emits `CONTROL_CHARACTERS_REMOVED`, because it deletes text. Line-ending and form-feed conversion do not, because they restate a break rather than lose anything.
+
+`Document.title` is normalized the same way and reduced to a single line. It arrives from the upload's filename — the one field a researcher never typed and a hostile uploader fully controls — and it is written into the TEI header without passing through block normalization.
 
 ### 4. Soft line-break reflow
 

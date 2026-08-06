@@ -21,6 +21,20 @@ from app.services.ingestion.reflow import fold_ligatures, looks_like_verse, refl
 _BLANK_LINE = re.compile(r"\n[ \t]*\n+")
 _SPACE_RUN = re.compile(r"[ \t]+")
 
+#: C0 controls that XML 1.0 forbids outright. Its Char production admits only
+#: tab, newline and carriage return below U+0020, and there is no escape for
+#: the rest — not even a numeric reference. A NUL or an ESC that reaches the
+#: canonical text therefore travels intact into the TEI export, which is built
+#: with ElementTree and serialises without complaint, and the researcher
+#: receives an archive no XML parser will open. Form feed is excluded here
+#: because it is handled as a break rather than deleted; see _normalize_text.
+_FORBIDDEN_CONTROLS = re.compile(r"[\x00-\x08\x0b\x0e-\x1f\x7f]")
+
+#: Emitted when characters were deleted outright. Line-ending and form-feed
+#: normalization are not warned about because they preserve the text and only
+#: restate the break; deletion loses something, so it is announced.
+CONTROL_CHARACTER_WARNING = "CONTROL_CHARACTERS_REMOVED"
+
 #: Emitted when a line-ending hyphen was closed up. A preserved hyphen changes
 #: nothing and needs no warning; a join alters the text, so the researcher is
 #: told and can see why. See docs/12-edge-cases.md.
@@ -81,6 +95,7 @@ def normalize(
         parser_name = source.metadata.parser_name
         parser_version = source.metadata.parser_version
         base_warnings = list(source.warnings)
+        raw_scan = "\n".join(block.text for block in source.blocks)
         candidates = [
             NormalizationBlock(
                 text=block.text,
@@ -93,11 +108,31 @@ def normalize(
             for block in source.blocks
         ]
     elif isinstance(source, str):
+        raw_scan = source
         candidates = [
             NormalizationBlock(text=part) for part in _split_blocks(_normalize_text(source))
         ]
     else:
+        raw_scan = "\n".join(candidate.text for candidate in source)
         candidates = source
+
+    # Scanned before normalization, because normalization is what removes them.
+    # The title is checked too: it comes from the upload filename, so it is the
+    # one field a researcher never typed and an attacker fully controls.
+    if _FORBIDDEN_CONTROLS.search(raw_scan) or _FORBIDDEN_CONTROLS.search(title):
+        base_warnings.append(
+            IngestionWarning(
+                code=CONTROL_CHARACTER_WARNING,
+                message=(
+                    "Control characters that cannot be represented in XML were removed, "
+                    "so the TEI export stays readable. They usually mean the witness was "
+                    "decoded with the wrong encoding."
+                ),
+                block_id=None,
+            )
+        )
+
+    title = _normalize_title(title)
 
     normalized_blocks: list[NormalizationBlock] = []
     join_count = 0
@@ -240,11 +275,30 @@ def normalize(
 
 
 def _normalize_text(text: str) -> str:
-    """Normalize Unicode, line endings, trailing whitespace, and space runs."""
+    """Normalize Unicode, line endings, control characters, and space runs."""
     text = unicodedata.normalize("NFC", text)
     text = text.replace("\r\n", "\n").replace("\r", "\n")
+    # A form feed is a page break, which in a plain-text witness is a break the
+    # author or typesetter meant. It cannot survive as itself — XML 1.0 has no
+    # room for it — so it becomes the break it already was rather than being
+    # dropped along with the rest.
+    text = text.replace("\f", "\n")
+    text = _FORBIDDEN_CONTROLS.sub("", text)
     lines = [_SPACE_RUN.sub(" ", line.rstrip(" \t")) for line in text.split("\n")]
     return "\n".join(lines).strip()
+
+
+def _normalize_title(title: str) -> str:
+    """Reduce a title to a single clean line.
+
+    Titles arrive from the upload's filename, which is attacker-controlled and
+    never passes through block normalization. It is written into the TEI header,
+    so it needs the same guarantee the text has.
+    """
+    cleaned = _FORBIDDEN_CONTROLS.sub("", unicodedata.normalize("NFC", title))
+    return _SPACE_RUN.sub(
+        " ", cleaned.replace("\f", " ").replace("\n", " ").replace("\r", " ")
+    ).strip()
 
 
 def _split_blocks(text: str) -> list[str]:

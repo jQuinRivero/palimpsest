@@ -176,6 +176,8 @@ Refusals are part of the journey and are asserted from the browser, not only as 
 
 End-to-end tests must reach their subject through an affordance a researcher actually has. Playwright can drive a disabled control, so a test that does is not evidence the path works; where the interesting window is one in which controls are disabled, the test drives the affordance that is not — for the uploader, a real drop with a real `DataTransfer`.
 
+The suite refuses to run against an API it did not configure. Playwright reuses an already-running API, which is what makes local iteration quick, and also means a server started by hand is adopted with production limits — under which the windowing tests fail a premise unrelated to any change. A setup project checks the reported `default_block_page_limit` before any test runs and fails once, naming the cause, rather than letting two tests fail with a message that points at a config file which is correct.
+
 End-to-end tests use small public-domain fixtures so they remain fast enough to run with ordinary PR validation. Fixtures whose point is the absence of something — a PDF with no text layer, standing in for a scan — are built in the spec rather than committed as binaries, so a reviewer can see the absence in the source.
 
 ### Accessibility tests

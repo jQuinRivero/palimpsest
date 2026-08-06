@@ -34,9 +34,16 @@ const workers = Math.max(1, Math.min(3, Math.floor(os.cpus().length / 2)));
  */
 export const E2E_WINDOW_BLOCK_THRESHOLD = 25;
 
+/**
+ * How many blocks a windowed page returns. Also the sentinel the setup project
+ * uses to tell a Playwright-started API from one that was already running:
+ * `/capabilities` reports it, and nothing else sets it to this.
+ */
+export const E2E_BLOCK_PAGE_LIMIT = 10;
+
 const E2E_API_ENV = {
   PALIMPSEST_COMPARISON_WINDOW_BLOCK_THRESHOLD: String(E2E_WINDOW_BLOCK_THRESHOLD),
-  PALIMPSEST_DEFAULT_BLOCK_PAGE_LIMIT: "10",
+  PALIMPSEST_DEFAULT_BLOCK_PAGE_LIMIT: String(E2E_BLOCK_PAGE_LIMIT),
   // The whole suite arrives from one client address in bursts, which is
   // precisely the traffic shape the limiter exists to reject. A throttled
   // upload fails a fixture in milliseconds and reads as an unrelated
@@ -81,8 +88,16 @@ export default defineConfig({
   ],
   projects: [
     {
+      // Runs before anything else and fails the whole run with one message if
+      // the API answering is not the one this suite configured. See the file
+      // for why that is worth a project of its own.
+      name: "setup",
+      testMatch: /api-config\.setup\.ts/,
+    },
+    {
       name: "chromium",
       use: { ...devices["Desktop Chrome"] },
+      dependencies: ["setup"],
     },
   ],
 });

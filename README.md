@@ -68,15 +68,21 @@ Requires Python 3.12+ (provisioned automatically by [uv](https://docs.astral.sh/
 cd backend && uv sync --all-groups && uv run uvicorn app.main:app --reload
 
 # Web on http://localhost:3000
-cd frontend && npm install && npm run dev
+cd frontend && npm ci && npm run dev
 ```
+
+`npm ci` rather than `npm install`: the lockfile is generated on Linux so that it is complete for CI, and `npm install` would quietly rewrite it against your platform. See [the lockfile note](#the-lockfile) below.
 
 Tests:
 
 ```bash
 cd backend  && uv run pytest            # unit, property, golden corpus, API
+
+cd frontend && npx playwright install chromium   # once
 cd frontend && npm run typecheck && npm run lint && npm run test:e2e
 ```
+
+The end-to-end suite starts its own API and web server. It will reuse an API you already have running, which is convenient while iterating but wrong if that server was started the ordinary way above — it has production limits, and the windowing tests need lowered ones. The suite checks this before it runs anything and tells you if so; stop that server and run again.
 
 The client's TypeScript types are generated from the API's OpenAPI schema and committed, so they cannot drift from the backend:
 
@@ -84,6 +90,18 @@ The client's TypeScript types are generated from the API's OpenAPI schema and co
 cd frontend && npm run gen:types        # regenerate
 cd frontend && npm run check:types-drift  # CI fails if stale
 ```
+
+### The lockfile
+
+`frontend/package-lock.json` is generated on Linux and its `resolved` URLs are canonical `registry.npmjs.org` ones. Both matter.
+
+npm computes its dependency tree per platform and never descends into the `wasm32-wasi` optional bindings on Windows, so a lockfile written there is missing entries that `npm ci` on Linux requires — it installs cleanly on the machine that produced it and fails in CI. Regenerate with:
+
+```bash
+docker run --rm -v "$PWD:/w" -w /w node:24 npm install --package-lock-only
+```
+
+If you install through a mirroring proxy, npm records whichever mirror answered. Rewrite those hosts back to `registry.npmjs.org` before committing: npm substitutes your configured registry at install time, so canonical URLs work everywhere, while a mirror's URLs work only for you.
 
 ## Documentation
 

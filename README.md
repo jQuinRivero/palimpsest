@@ -61,7 +61,7 @@ Scanned PDFs are refused with `OCR_REQUIRED` rather than returning an empty docu
 
 ## Running it
 
-Requires Python 3.12+ (provisioned automatically by [uv](https://docs.astral.sh/uv/)) and Node 20+.
+Requires Python 3.12+ (provisioned automatically by [uv](https://docs.astral.sh/uv/)) and Node 20+. CI runs the backend on 3.12 and 3.13, and the frontend on Node 24; Node 20 is verified to build.
 
 ```bash
 # API on http://127.0.0.1:8000

@@ -10,17 +10,29 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  # StrEnum (docs/05-data-schema.md) requires 3.11+; the project pins 3.12.
-  PYTHON_VERSION: "3.12"
+  # UV_PYTHON is read by uv directly, in every job that installs the backend.
+  # Without it uv takes whatever `python3` the runner image happens to ship —
+  # 3.12.3 today — so the version was decided by GitHub's image rather than by
+  # this file, and would change silently the day that image did.
+  UV_PYTHON: "3.12"
   NODE_VERSION: "24"
 
 jobs:
   backend:
-    name: Backend
+    name: Backend (py${{ matrix.python-version }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # pyproject declares requires-python = ">=3.12". Testing only 3.12
+        # made that a claim rather than a promise: anyone on 3.13 is inside
+        # the declared range and outside everything we run.
+        python-version: ["3.12", "3.13"]
     defaults:
       run:
         working-directory: backend
+    env:
+      UV_PYTHON: ${{ matrix.python-version }}
     steps:
       - uses: actions/checkout@v4
 

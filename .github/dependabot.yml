@@ -4,6 +4,10 @@ updates:
     directory: /backend
     schedule:
       interval: weekly
+    # pyproject uses lower bounds, while uv.lock chooses the concrete tested
+    # versions. Raising a floor from 6.125 to whatever is newest is not an
+    # update — it only excludes environments that still satisfy the contract.
+    versioning-strategy: increase-if-necessary
     groups:
       minor-and-patch:
         patterns:
@@ -16,6 +20,8 @@ updates:
     directory: /frontend
     schedule:
       interval: weekly
+    # Keep compatible ranges stable and update the lockfile inside them.
+    versioning-strategy: increase-if-necessary
     ignore:
       # The current Next.js/openapi-typescript stack is on ESLint 9 and
       # TypeScript 5. Dependabot's first major PRs proved the boundary:
@@ -25,6 +31,12 @@ updates:
         update-types:
           - version-update:semver-major
       - dependency-name: typescript
+        update-types:
+          - version-update:semver-major
+      # Node 20 is the documented and container-verified minimum runtime.
+      # Types for Node 26 would make successful type-checking say nothing
+      # about that supported environment.
+      - dependency-name: "@types/node"
         update-types:
           - version-update:semver-major
     groups:

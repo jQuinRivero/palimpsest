@@ -39,6 +39,16 @@ updates:
       - dependency-name: "@types/node"
         update-types:
           - version-update:semver-major
+      # GitHub's public runners can install these, but the approved CFS npm
+      # feed used by this project's managed development devices does not yet
+      # serve 16.3.0. Ignore only that release; the next one is allowed to
+      # prove the feed has caught up.
+      - dependency-name: next
+        versions:
+          - "16.3.0"
+      - dependency-name: eslint-config-next
+        versions:
+          - "16.3.0"
     groups:
       minor-and-patch:
         patterns:

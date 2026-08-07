@@ -1,0 +1,9 @@
+palimpsest
+Copyright 2026 jQuinRivero
+
+This product includes diff-match-patch, licensed under the Apache License,
+Version 2.0. The installed Python package identifies the work as a repackaging
+of Google's Diff Match and Patch libraries and carries this attribution:
+
+Copyright 2018 The diff-match-patch Authors.
+https://github.com/google/diff-match-patch

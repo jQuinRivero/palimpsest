@@ -1,0 +1,35 @@
+name: Documentation issue
+description: Report missing, stale, or contradictory documentation
+title: "docs: "
+labels: [documentation]
+body:
+  - type: input
+    id: location
+    attributes:
+      label: Document or section
+      description: Link or name the README, spec document, ADR, or comment that needs attention.
+      placeholder: docs/13-testing-strategy.md#end-to-end
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What is wrong or missing?
+      description: If code and docs disagree, describe both sides.
+    validations:
+      required: true
+  - type: textarea
+    id: correction
+    attributes:
+      label: Suggested correction
+      description: What should the documentation say instead?
+  - type: dropdown
+    id: normative
+    attributes:
+      label: Does this affect the normative specification under docs/?
+      options:
+        - "Yes"
+        - "No"
+        - Not sure
+    validations:
+      required: true

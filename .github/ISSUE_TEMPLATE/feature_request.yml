@@ -1,0 +1,42 @@
+name: Feature request
+description: Suggest a researcher-facing capability or workflow improvement
+title: "feat: "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What reading problem would this solve?
+      description: Explain the research workflow or frustration, not only the proposed UI.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: What should palimpsest do differently?
+    validations:
+      required: true
+  - type: dropdown
+    id: witness-formats
+    attributes:
+      label: Relevant witness formats
+      multiple: true
+      options:
+        - .txt
+        - .md / .markdown
+        - .docx
+        - .pdf
+        - TEI export
+        - Not format-specific
+  - type: textarea
+    id: spec-impact
+    attributes:
+      label: Specification impact
+      description: Which docs under docs/ would need to change, if any?
+      placeholder: docs/04-diff-engine.md, docs/10-components.md, or none
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Are there simpler workflows, existing tools, or V2 approaches to consider?

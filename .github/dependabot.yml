@@ -16,6 +16,17 @@ updates:
     directory: /frontend
     schedule:
       interval: weekly
+    ignore:
+      # The current Next.js/openapi-typescript stack is on ESLint 9 and
+      # TypeScript 5. Dependabot's first major PRs proved the boundary:
+      # ESLint 10 crashes in the config stack, and openapi-typescript 7.13
+      # declares TypeScript ^5.x. Revisit when those upstreams move.
+      - dependency-name: eslint
+        update-types:
+          - version-update:semver-major
+      - dependency-name: typescript
+        update-types:
+          - version-update:semver-major
     groups:
       minor-and-patch:
         patterns:

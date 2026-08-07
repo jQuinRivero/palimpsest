@@ -9,8 +9,9 @@ manual review.
 - [ ] Read the repository as a stranger: `README`, user guide, architecture,
       governance files, issue forms, and pull-request template.
 - [ ] Review the complete commit history, not only `main`'s current tree.
-- [ ] Confirm both author identities shown by
+- [ ] Confirm all author identities shown by
       `python scripts/public_release_audit.py` are intended to become public.
+      The current set is two human identities plus `dependabot[bot]`.
 - [ ] Confirm the personal enforcement address in `CODE_OF_CONDUCT.md` is the
       address you want published.
 - [ ] Confirm the three screenshots contain no personal data, private
@@ -20,7 +21,7 @@ manual review.
 - [ ] Decide whether the CFS URLs in `backend/uv.lock` and `docs-site/uv.lock`
       are acceptable in the public repository. They are required on the
       managed development devices and are intentionally **not** rewritten to
-      public PyPI URLs.
+      public PyPI URLs. The current counts are 1,013 and 639 respectively.
 
 Run the repeatable history audit:
 
@@ -35,13 +36,13 @@ URL counts that need a human decision.
 
 ## 2. Resolve outstanding automation
 
-- [ ] Triage every open Dependabot pull request. Do not merge major updates
+- [x] Triage every open Dependabot pull request. Do not merge major updates
       merely because their checks pass.
-- [ ] Confirm CI is green on Python 3.12 and 3.13, frontend, schema contract,
+- [x] Confirm CI is green on Python 3.12 and 3.13, frontend, schema contract,
       and end-to-end jobs.
-- [ ] Run the **Docs** workflow manually and inspect the built artifact.
-- [ ] Run **Public release readiness** manually and retain the green run.
-- [ ] Confirm CodeQL is skipped only because the repository is private.
+- [x] Run the **Docs** workflow manually and inspect the built artifact.
+- [x] Run **Public release readiness** manually and retain the green run.
+- [x] Confirm CodeQL is skipped only because the repository is private.
 
 ## 3. Change visibility
 
@@ -64,8 +65,31 @@ Changing visibility is intentionally not automated by this repository.
 - [ ] Enable GitHub Pages with **GitHub Actions** as the source, run **Docs**,
       and verify the published guide, Mermaid diagrams, search, and screenshots.
 - [ ] Set the repository homepage to the published guide.
-- [ ] Add repository topics such as `digital-humanities`,
+- [x] Add repository topics such as `digital-humanities`,
       `textual-criticism`, `diff`, `tei`, and `fastapi`.
+
+Already applied while private: squash-only merges, reasoning from the
+pull-request description in the squash commit, automatic deletion of merged
+branches, issues enabled, and unused Projects/Wiki surfaces disabled.
+
+The repository includes a repeatable installer for the branch and security
+settings above:
+
+```bash
+python scripts/configure_public_repository.py
+python scripts/configure_public_repository.py --apply
+```
+
+The first command is a dry run. While the repository is private it explains
+the GitHub-plan blocker and changes nothing. After visibility becomes public,
+`--apply` requires pull requests and the five CI checks, blocks force pushes
+and branch deletion (including for administrators), requires up-to-date
+branches and resolved conversations, and enables vulnerability reporting,
+Dependabot security updates, secret scanning, and push protection.
+
+The default is zero required approvals because this is currently a
+solo-maintainer repository. Use `--required-approvals 1` when another
+maintainer can review changes.
 
 ## 5. Publish 0.1.0
 

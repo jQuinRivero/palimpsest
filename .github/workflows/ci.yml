@@ -4,6 +4,11 @@ on:
   push:
     branches: [main]
   pull_request:
+  # Manual trigger. Added after a GitHub Actions outage swallowed two pushes:
+  # runs are not created while Actions is down and are never replayed when it
+  # returns, so main sat unverified with no way to ask for a run short of
+  # committing something that did not need committing.
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

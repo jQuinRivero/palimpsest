@@ -14,28 +14,28 @@ Use Python 3.12+ with `uv`, and Node 20+ for the frontend. CI currently exercise
 
 Install backend dependencies:
 
-```powershell
+```bash
 cd backend
 uv sync --all-groups --frozen
 ```
 
 Run the API locally:
 
-```powershell
+```bash
 cd backend
 uv run uvicorn app.main:app --reload
 ```
 
 Install frontend dependencies with `npm ci`, never `npm install`:
 
-```powershell
+```bash
 cd frontend
 npm ci
 ```
 
 Run the web app locally:
 
-```powershell
+```bash
 cd frontend
 npm run dev
 ```
@@ -46,7 +46,13 @@ Backend commands that execute project code should go through `uv run`, so they u
 
 `frontend/package-lock.json` is generated on Linux so it contains optional packages that Linux CI needs. On Windows, `npm install` can silently rewrite the lockfile into a platform-local state that installs for you and fails in CI. Use `npm ci` for ordinary work.
 
-When the lockfile really must be regenerated, do it deliberately from `frontend`:
+When the lockfile really must be regenerated, do it deliberately from `frontend`. On macOS or Linux:
+
+```bash
+docker run --rm -v "$PWD:/w" -w /w node:24 npm install --package-lock-only
+```
+
+On PowerShell:
 
 ```powershell
 docker run --rm -v "${PWD}:/w" -w /w node:24 npm install --package-lock-only
@@ -58,14 +64,14 @@ Before committing the regenerated lockfile, rewrite any `redacted.invalid` resol
 
 Backend:
 
-```powershell
+```bash
 cd backend
 uv run pytest
 ```
 
 Frontend:
 
-```powershell
+```bash
 cd frontend
 npx playwright install chromium
 npm run typecheck
@@ -79,11 +85,20 @@ The end-to-end suite starts its own API and web server. It also reuses an API al
 
 If API models change, regenerate and check the committed TypeScript types while the backend is running on port 8000:
 
-```powershell
+```bash
+cd backend
+uv run uvicorn app.main:app --host 127.0.0.1 --port 8000
+```
+
+In another shell:
+
+```bash
 cd frontend
 npm run gen:types
 npm run check:types-drift
 ```
+
+Both type-generation commands fetch `http://127.0.0.1:8000/api/v1/openapi.json`. If the API is not running, they fail with `Could not read the OpenAPI schema` and `connect ECONNREFUSED 127.0.0.1:8000`, followed by the reminder to start the backend first.
 
 ## Commits and pull requests
 

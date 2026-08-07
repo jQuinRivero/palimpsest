@@ -405,20 +405,38 @@ def _detect_groups(
     return groups
 
 
-def align(
+#: One block on one side against a window of blocks on the other, with the
+#: similarity that justified it. A split reads a-to-many; a merge reads the
+#: same shape with the sides swapped.
+Group = tuple[int, tuple[int, ...], float]
+
+
+def _unmatched(count: int, matched: set[int]) -> list[int]:
+    """Indices with no correspondence yet, in order."""
+    return [index for index in range(count) if index not in matched]
+
+
+def _correspond(
     a_blocks: list[Block],
     b_blocks: list[Block],
-    options: DiffOptions | None = None,
-) -> list[Alignment]:
-    """Establish correspondence between two witnesses.
+    threshold: float,
+) -> tuple[
+    list[tuple[int, int, float]],
+    list[Group],
+    list[Group],
+    set[int],
+    set[int],
+    set[tuple[int, int]],
+]:
+    """Work out which blocks correspond, before deciding what to call it.
 
-    Returns alignments in reading order — Manuscript B's order, since B is the
-    later state of the text and the reader is following its shape, with deleted
-    material interleaved where its A neighbours imply.
+    Runs in a deliberate order. Anchors are certain, so they go first and
+    constrain everything after. Gaps between anchors are then searched
+    fuzzily. Only then are splits and merges considered, and among those the
+    ones hiding inside already-matched pairs come before the ones where
+    neither side was claimed — a split whose halves were consumed by pairwise
+    matching is recoverable only by re-examining those pairs.
     """
-    options = options or DiffOptions()
-    threshold = options.align_threshold
-
     anchors = _anchor(a_blocks, b_blocks)
     anchor_pairs = {(a, b) for a, b in anchors}
     anchored_a = {a for a, _ in anchors}
@@ -433,21 +451,21 @@ def align(
     matched_a = {a for a, _, _ in pairs}
     matched_b = {b for _, b, _ in pairs}
 
-    unmatched_a = [i for i in range(len(a_blocks)) if i not in matched_a]
-    unmatched_b = [i for i in range(len(b_blocks)) if i not in matched_b]
-
-    # A split whose halves were consumed by pairwise matching is only
-    # recoverable by re-examining the matched pairs, so that runs first.
-    splits = _promote_groups(pairs, unmatched_b, a_blocks, b_blocks, threshold)
+    splits = _promote_groups(
+        pairs, _unmatched(len(b_blocks), matched_b), a_blocks, b_blocks, threshold
+    )
     promoted_a = {a for a, _, _ in splits}
     pairs = [p for p in pairs if p[0] not in promoted_a]
     for a_index, b_window, _ in splits:
         matched_a.add(a_index)
         matched_b.update(b_window)
 
-    unmatched_b = [i for i in range(len(b_blocks)) if i not in matched_b]
     merges = _promote_groups(
-        [(b, a, s) for a, b, s in pairs], unmatched_a, b_blocks, a_blocks, threshold
+        [(b, a, s) for a, b, s in pairs],
+        _unmatched(len(a_blocks), matched_a),
+        b_blocks,
+        a_blocks,
+        threshold,
     )
     promoted_b = {b for b, _, _ in merges}
     pairs = [p for p in pairs if p[1] not in promoted_b]
@@ -456,39 +474,61 @@ def align(
         matched_a.update(a_window)
 
     # Then the case where nothing claimed either side.
-    unmatched_a = [i for i in range(len(a_blocks)) if i not in matched_a]
-    unmatched_b = [i for i in range(len(b_blocks)) if i not in matched_b]
-
-    orphan_splits = _detect_groups(unmatched_a, unmatched_b, a_blocks, b_blocks, threshold)
+    orphan_splits = _detect_groups(
+        _unmatched(len(a_blocks), matched_a),
+        _unmatched(len(b_blocks), matched_b),
+        a_blocks,
+        b_blocks,
+        threshold,
+    )
     for a_index, b_window, _score in orphan_splits:
         matched_a.add(a_index)
         matched_b.update(b_window)
     splits.extend(orphan_splits)
 
-    unmatched_a = [i for i in range(len(a_blocks)) if i not in matched_a]
-    unmatched_b = [i for i in range(len(b_blocks)) if i not in matched_b]
-
-    orphan_merges = _detect_groups(unmatched_b, unmatched_a, b_blocks, a_blocks, threshold)
+    orphan_merges = _detect_groups(
+        _unmatched(len(b_blocks), matched_b),
+        _unmatched(len(a_blocks), matched_a),
+        b_blocks,
+        a_blocks,
+        threshold,
+    )
     for b_index, a_window, _score in orphan_merges:
         matched_b.add(b_index)
         matched_a.update(a_window)
     merges.extend(orphan_merges)
 
+    return pairs, splits, merges, matched_a, matched_b, anchor_pairs
+
+
+def align(
+    a_blocks: list[Block],
+    b_blocks: list[Block],
+    options: DiffOptions | None = None,
+) -> list[Alignment]:
+    """Establish correspondence between two witnesses.
+
+    Returns alignments in reading order — Manuscript B's order, since B is the
+    later state of the text and the reader is following its shape, with deleted
+    material interleaved where its A neighbours imply.
+    """
+    options = options or DiffOptions()
+
+    pairs, splits, merges, matched_a, matched_b, anchor_pairs = _correspond(
+        a_blocks, b_blocks, options.align_threshold
+    )
     moved = _detect_moves(pairs, options)
 
     alignments: list[Alignment] = []
 
     for a_index, b_index, score in pairs:
-        distance = None
-        if (a_index, b_index) in moved:
-            distance = b_index - a_index
         alignments.append(
             Alignment(
                 relation=Relation.MATCHED,
                 a_indices=(a_index,),
                 b_indices=(b_index,),
                 similarity=1.0 if (a_index, b_index) in anchor_pairs else score,
-                move_distance=distance,
+                move_distance=b_index - a_index if (a_index, b_index) in moved else None,
             )
         )
 
@@ -512,10 +552,10 @@ def align(
             )
         )
 
-    for a_index in sorted(i for i in range(len(a_blocks)) if i not in matched_a):
+    for a_index in _unmatched(len(a_blocks), matched_a):
         alignments.append(Alignment(relation=Relation.DELETED, a_indices=(a_index,), b_indices=()))
 
-    for b_index in sorted(i for i in range(len(b_blocks)) if i not in matched_b):
+    for b_index in _unmatched(len(b_blocks), matched_b):
         alignments.append(Alignment(relation=Relation.INSERTED, a_indices=(), b_indices=(b_index,)))
 
     return _reading_order(alignments)

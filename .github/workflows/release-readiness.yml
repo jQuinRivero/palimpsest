@@ -1,0 +1,23 @@
+name: Public release readiness
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    name: Audit full repository history
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Audit files, blobs, identities, and secret-shaped history
+        run: python scripts/public_release_audit.py --require-clean
+
+      - name: Check links from the guide into the specification
+        run: python docs-site/check_repository_links.py

@@ -12,6 +12,15 @@ palimpsest is built for those cases:
 - verse compared line by line;
 - TEI P5 export using parallel segmentation.
 
+Here is what that buys, on a passage where nothing was rewritten at all. One paragraph moved and one split in two; every word is identical:
+
+```{image} ../_static/synoptic-view.png
+:alt: Synoptic view. The summary bar reads "100% similar", "No wording changes", "1 block moved, 2 blocks split". Manuscript A and Manuscript B are set side by side, with a moved paragraph and two split paragraphs marked and connected across the gutter.
+:width: 100%
+```
+
+A line-oriented diff would report most of that as deleted-and-reinserted text. palimpsest reports it as one move and one split, and says plainly that no wording changed.
+
 The v1 product boundary is two witnesses at a time, no user accounts, no editing or merging, and no OCR engine. Scanned PDFs are refused honestly with `OCR_REQUIRED` instead of producing an empty comparison.
 
 Normative detail: [overview](https://github.com/jQuinRivero/palimpsest/blob/main/docs/00-overview.md).

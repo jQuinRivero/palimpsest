@@ -7,6 +7,39 @@
 5. Start the comparison.
 6. When the comparison is ready, the app opens `/c/<comparison_id>`.
 
+```{image} ../_static/uploader.png
+:alt: The uploader, with a drop zone for Manuscript A and one for Manuscript B, a swap control between them, and a line naming the formats this server accepts.
+:width: 100%
+```
+
+## A worked example
+
+Paste these two witnesses. Nothing is rewritten — the second paragraph has moved to the front, and the last paragraph has been split in two:
+
+Manuscript A:
+
+```text
+It was the best of times, it was the worst of times.
+
+It was the age of wisdom, it was the age of foolishness.
+
+We had everything before us. We had nothing before us.
+```
+
+Manuscript B:
+
+```text
+It was the age of wisdom, it was the age of foolishness.
+
+It was the best of times, it was the worst of times.
+
+We had everything before us.
+
+We had nothing before us.
+```
+
+palimpsest reports **100% similar**, **no wording changes**, and **1 block moved, 2 blocks split**. Not one word is marked as inserted or deleted, because not one word was.
+
 The comparison URL is shareable until the session expires. The ID is unguessable and expiry is enforced by the SQLite session store.
 
 ## What to look for first

@@ -6,6 +6,11 @@
 
 **Unified** view renders one stream. Deletions remain visible and insertions appear inline, so the earlier reading is still present rather than erased.
 
+```{image} ../_static/unified-view.png
+:alt: Unified view of the same comparison, rendering one continuous stream instead of two panes, with the moved and split blocks marked in the margin.
+:width: 100%
+```
+
 ## Word-level tokens
 
 The default granularity is word level. Tokens in the payload are rendered as unchanged, insertion, or deletion. Metrics such as insertions, deletions, and churn are computed by the server and carried in the payload; the browser does not recompute them.

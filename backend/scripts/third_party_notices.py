@@ -203,17 +203,33 @@ def installed_python_packages() -> list[PackageNotice]:
     return sorted(rows, key=lambda row: row.sort_key)
 
 
+class NodeModulesMissing(RuntimeError):
+    """`frontend/node_modules` is not installed, so there is nothing to audit."""
+
+
 def npm_tree() -> dict[str, Any]:
     npm = shutil.which("npm") or shutil.which("npm.cmd")
     if npm is None:
-        raise RuntimeError("npm is required to inspect frontend dependencies")
+        raise NodeModulesMissing("npm is not on PATH")
+    if not (FRONTEND / "node_modules").is_dir():
+        raise NodeModulesMissing(f"{FRONTEND / 'node_modules'} does not exist")
+
+    # `npm ls` exits non-zero on any tree problem, including ones irrelevant
+    # here such as an unmet optional peer dependency, while still printing the
+    # tree. The output is what matters, so parse it and let a genuinely
+    # unparseable result be the failure.
     completed = subprocess.run(
         [npm, "ls", "--all", "--json", "--long", "--silent"],
         cwd=FRONTEND,
-        check=True,
+        check=False,
         capture_output=True,
         text=True,
     )
+    if not completed.stdout.strip():
+        raise NodeModulesMissing(
+            f"npm ls produced no output (exit {completed.returncode}): "
+            f"{completed.stderr.strip()[:200]}"
+        )
     return json.loads(completed.stdout)
 
 

@@ -14,7 +14,7 @@ import argparse
 import re
 from importlib.metadata import distributions
 
-from third_party_notices import PackageNotice, installed_npm_packages
+from third_party_notices import NodeModulesMissing, PackageNotice, installed_npm_packages
 
 REVIEW_PATTERNS = (
     re.compile(r"(^|[^A-Z])MPL([^A-Z]|$)"),
@@ -115,7 +115,20 @@ def main() -> int:
     if not args.npm_only:
         flagged.extend(print_rows("Python dependencies", python_rows()))
     if not args.python_only:
-        flagged.extend(print_rows("npm dependencies", installed_npm_packages()))
+        try:
+            flagged.extend(print_rows("npm dependencies", installed_npm_packages()))
+        except NodeModulesMissing as exc:
+            # The backend CI job runs this check without ever installing the
+            # frontend, and a contributor working only on Python has no reason
+            # to have node_modules either. Skipping loudly is right; failing
+            # would train everyone to ignore the result. The frontend job runs
+            # the same check with --npm-only, where the tree is present and its
+            # absence would be a real failure.
+            if args.npm_only:
+                print(f"\nCannot audit npm dependencies: {exc}")
+                return 1
+            print(f"\nSkipping npm dependencies: {exc}")
+            print("Run `npm ci` in frontend/, or use --npm-only to require them.")
     return report(flagged)
 
 

@@ -148,6 +148,7 @@ def _group_blocks(
     a_blocks: list[Block],
     b_blocks: list[Block],
     options: DiffOptions,
+    *,
     status: BlockStatus,
     gid: str,
     next_sequence: int,
@@ -246,9 +247,9 @@ def build_diff_blocks(
                 a_blocks,
                 b_blocks,
                 options,
-                _status_for(alignment, "", ""),
-                group_id(group_sequence),
-                sequence,
+                status=_status_for(alignment, "", ""),
+                gid=group_id(group_sequence),
+                next_sequence=sequence,
             )
             blocks.extend(members)
             sequence += len(members)

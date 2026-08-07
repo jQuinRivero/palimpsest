@@ -1,5 +1,19 @@
 # palimpsest
 
+```text
+             _ _                               _
+ _ __   __ _| (_)_ __ ___  _ __  ___  ___  ___| |_
+| '_ \ / _` | | | '_ ` _ \| '_ \/ __|/ _ \/ __| __|
+| |_) | (_| | | | | | | | | |_) \__ \  __/\__ \ |_
+| .__/ \__,_|_|_|_| |_| |_| .__/|___/\___||___/\__|
+|_|                       |_|
+
+   A | It was the best of times, it was the worst     of times.
+     |                                      -----
+   B | It was the best of times, it was the strangest of times.
+     |                                      +++++++++
+```
+
 ![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue)
 ![Status: v1 complete](https://img.shields.io/badge/status-v1%20complete-green)
 

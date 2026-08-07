@@ -90,7 +90,20 @@ def names_ever_committed() -> list[str]:
 
 
 def history_patch() -> str:
-    return git("log", "--all", "-p", "--no-color", "--format=commit:%H")
+    # The scanner's own regex source necessarily contains the strings it is
+    # looking for (for example ``/Users/`` and ``/home/``). Excluding only this
+    # file avoids a self-match; every other path and every commit remains in
+    # scope.
+    return git(
+        "log",
+        "--all",
+        "-p",
+        "--no-color",
+        "--format=commit:%H",
+        "--",
+        ".",
+        ":!scripts/public_release_audit.py",
+    )
 
 
 def largest_blobs() -> list[tuple[int, str]]:

@@ -105,6 +105,10 @@ cd frontend && npm run gen:types        # regenerate
 cd frontend && npm run check:types-drift  # CI fails if stale
 ```
 
+Both commands read `http://127.0.0.1:8000/openapi.json`, so the API must be
+running first. With it stopped they fail with `Could not read the OpenAPI
+schema` and an `ECONNREFUSED 127.0.0.1:8000` cause.
+
 ### The lockfile
 
 `frontend/package-lock.json` is generated on Linux and its `resolved` URLs are canonical `registry.npmjs.org` ones. Both matter.
@@ -121,6 +125,8 @@ If you install through a mirroring proxy, npm records whichever mirror answered.
 
 | # | Document | Description |
 |---|---|---|
+| Guide | [User guide and architecture tour](docs-site/index.md) | Install, quickstart, reading a comparison, TEI export, troubleshooting, architecture diagrams, and screenshots. |
+| Release | [Open-source release checklist](OPEN_SOURCE_RELEASE_CHECKLIST.md) | Owner review and GitHub settings to complete before and after changing visibility. |
 | — | [Documentation index](docs/README.md) | Normative specification index, reading order, terminology, and licensing constraint. |
 | 00 | [Overview](docs/00-overview.md) | Vision, researcher profile, scope, non-goals, and glossary. |
 | 01 | [Architecture](docs/01-architecture.md) | System context, module map, request lifecycle, and deployment shape. |

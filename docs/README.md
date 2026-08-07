@@ -4,7 +4,7 @@
 
 This directory is the normative specification for `palimpsest`, an open-source tool for reading the difference between two versions of a literary text.
 
-**Status:** Draft · **License:** Apache-2.0 · **Audience:** contributors implementing the system
+**Status:** Implemented and normative for v1 · **License:** Apache-2.0 · **Audience:** contributors implementing the system
 
 ---
 

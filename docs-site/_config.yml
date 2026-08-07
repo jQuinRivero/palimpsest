@@ -38,6 +38,11 @@ sphinx:
     linkcheck_retries: 3
     linkcheck_report_timeouts_as_broken: false
     linkcheck_anchors: true
+    # The repository is private until release, so these URLs return 404 to
+    # Sphinx even when their targets exist. check_repository_links.py maps
+    # only this narrow class back to the working tree. Every other external
+    # URL is checked normally.
     linkcheck_ignore:
-      - "https?://.*"
-
+      - "https://github\\.com/jQuinRivero/palimpsest/blob/main/docs/.*"
+      - "http://localhost:3000/?"
+      - "http://127\\.0\\.0\\.1:8000/?"

@@ -9,14 +9,14 @@ The backend is managed with `uv`; the frontend is managed with npm. These comman
 
 ## Install dependencies
 
-```powershell
+```bash
 uv --directory backend sync --all-groups
 npm --prefix frontend ci
 ```
 
 ## Run the API
 
-```powershell
+```bash
 uv --directory backend run uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
@@ -26,7 +26,7 @@ The API serves `/api/v1/health`, `/api/v1/capabilities`, document upload, compar
 
 In a second shell:
 
-```powershell
+```bash
 npm --prefix frontend run dev
 ```
 
@@ -34,7 +34,7 @@ The Next.js app serves the uploader at <http://localhost:3000>. The API runs at 
 
 ## Useful checks
 
-```powershell
+```bash
 uv --directory backend run pytest
 npm --prefix frontend run typecheck
 npm --prefix frontend run lint
@@ -42,4 +42,8 @@ npm --prefix frontend run gen:types
 npm --prefix frontend run check:types-drift
 ```
 
-The TypeScript API types are generated from the backend OpenAPI schema and committed; `check:types-drift` fails when the committed mirror is stale.
+The TypeScript API types are generated from the backend OpenAPI schema and
+committed; `check:types-drift` fails when the committed mirror is stale. Both
+type-generation commands require the API to be running on port 8000. With it
+stopped, they fail with `Could not read the OpenAPI schema` and an
+`ECONNREFUSED 127.0.0.1:8000` cause.

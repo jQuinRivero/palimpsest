@@ -39,6 +39,9 @@ jobs:
       - name: Build HTML
         run: uv --directory docs-site run jupyter-book build .
 
+      - name: Check links into the normative specification
+        run: uv --directory docs-site run python check_repository_links.py
+
       - name: Check links
         run: uv --directory docs-site run jupyter-book build . --builder linkcheck
 

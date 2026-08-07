@@ -11,5 +11,6 @@ The full ADRs live under `docs/adr/`. This page surfaces the accepted decisions 
 | ADR-0005 | Use Tailwind v4 CSS-first `@theme` tokens instead of a default `tailwind.config.js`, keeping manuscript design tokens as CSS variables. | [Full ADR](https://github.com/jQuinRivero/palimpsest/blob/main/docs/adr/0005-tailwind-v4-css-first-tokens.md) |
 | ADR-0006 | Export TEI P5 using parallel segmentation and encode moves, splits, and merges as TEI links in back matter. | [Full ADR](https://github.com/jQuinRivero/palimpsest/blob/main/docs/adr/0006-tei-parallel-segmentation-export.md) |
 | ADR-0007 | Preserve stanza boundaries during verse segmentation so redividing a poem is reported as structural change. | [Full ADR](https://github.com/jQuinRivero/palimpsest/blob/main/docs/adr/0007-stanza-boundaries.md) |
+| ADR-0008 | Allow the current unmodified MPL-2.0 dependencies, keep reporting them for review, and require a new decision if their role or modification status changes. | [Full ADR](https://github.com/jQuinRivero/palimpsest/blob/main/docs/adr/0008-weak-copyleft-dependency-review.md) |
 
 ADR index: [docs/adr/README.md](https://github.com/jQuinRivero/palimpsest/blob/main/docs/adr/README.md).

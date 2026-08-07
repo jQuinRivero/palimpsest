@@ -7,6 +7,7 @@ import { ApiError, createComparison, getCapabilities, uploadDocument } from "../
 import { waitForComparison, type PollProgress } from "../lib/waitForComparison";
 import type {
   CapabilitiesResponse,
+  ComparisonAccepted,
   ComparisonResult,
   DiffOptions,
   DocumentSummary,
@@ -26,11 +27,7 @@ type SlotKey = "a" | "b";
 type SlotState = "empty" | "selected" | "uploading" | "uploaded" | "error";
 type SlotLabel = "Manuscript A" | "Manuscript B";
 
-interface ComparisonAccepted {
-  comparison_id?: string;
-}
-
-interface ApiProblem {
+export interface ApiProblem {
   title: string;
   detail: string;
   code: ErrorCode | "UNKNOWN";
@@ -249,8 +246,6 @@ export function ManuscriptUploader({
     [capabilities, initialOptions],
   );
 
-  void onAccepted;
-
   useEffect(() => {
     let isMounted = true;
     getCapabilities()
@@ -423,6 +418,7 @@ export function ManuscriptUploader({
 
       // Accepted, not finished. Wait here rather than navigating to a
       // comparison that does not exist yet.
+      onAccepted?.(outcome.accepted);
       const { comparison_id: comparisonId, retry_after: retryAfter } = outcome.accepted;
       setCollating({ attempt: 0, elapsedMs: 0 });
       await waitForComparison(comparisonId, {

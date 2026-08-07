@@ -62,7 +62,7 @@ export interface ManuscriptUploaderProps {
 }
 ```
 
-`ComparisonAccepted` and `ApiProblem` are API response types matching [API reference](./06-api-reference.md). They are named in frontend code but serialized from the backend response.
+`ComparisonAccepted` and `ApiProblem` are API response types matching [API reference](./06-api-reference.md). They are named in frontend code but serialized from the backend response. `ComparisonAccepted` is imported from `lib/types.ts`, which derives it from the OpenAPI schema; it must never be re-declared by hand, because a hand-written copy can disagree with the server and nothing will catch it.
 
 ### Internal state
 
@@ -94,7 +94,7 @@ Validation before upload is a courtesy, not a gate. The server re-checks format 
 8. Enable the compare action only when both slots are `uploaded`.
 9. Submit `{a_document_id, b_document_id, options?}` to `POST /api/v1/comparisons`.
 10. On `201 ComparisonResult`, route to `/c/[comparisonId]`, concretely `/c/<comparison.comparison_id>`, and optionally call `onComparisonCreated`.
-11. On `202 ComparisonAccepted`, route to `/c/[comparisonId]`, concretely `/c/<comparison_id>`, if the response includes it and call `onAccepted`.
+11. On `202 ComparisonAccepted`, call `onAccepted`, wait for the collation to finish, then route to `/c/[comparisonId]`, concretely `/c/<comparison_id>`. `comparison_id` is always present on a `202`; it is required by the schema, so no branch may treat it as optional.
 
 Because either authority may refuse, and which one does is a race whenever capabilities are slow, a refusal must read the same either way. The server's message is about parsers rather than about this upload and names no file, so the component supplies the filename itself rather than relying on the message to carry it.
 

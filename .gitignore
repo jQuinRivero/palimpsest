@@ -244,3 +244,4 @@ next-env.d.ts
 *.db-wal
 *.db-shm
 /backend/palimpsest.db*
+docs-site/_build/

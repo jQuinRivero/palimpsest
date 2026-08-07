@@ -1,0 +1,22 @@
+format: jb-book
+root: index
+parts:
+  - caption: Guide
+    chapters:
+      - file: guide/index
+      - file: guide/install
+      - file: guide/quickstart
+      - file: guide/formats
+      - file: guide/reading
+      - file: guide/tei
+      - file: guide/troubleshooting
+  - caption: Architecture
+    chapters:
+      - file: architecture/index
+      - file: architecture/lifecycle
+      - file: architecture/boundaries
+      - file: architecture/contracts
+  - caption: Decisions and reference
+    chapters:
+      - file: decisions
+      - file: reference

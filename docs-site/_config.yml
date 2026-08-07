@@ -1,0 +1,43 @@
+title: palimpsest
+author: jQuinRivero
+copyright: "2026"
+logo: ""
+only_build_toc_files: true
+exclude_patterns:
+  - "_build/**"
+  - ".venv/**"
+
+execute:
+  execute_notebooks: "off"
+
+repository:
+  url: https://github.com/jQuinRivero/palimpsest
+  branch: main
+  path_to_book: docs-site
+
+html:
+  use_repository_button: true
+  use_issues_button: true
+  use_edit_page_button: true
+  home_page_in_navbar: true
+
+parse:
+  myst_enable_extensions:
+    - colon_fence
+    - deflist
+
+sphinx:
+  extra_extensions:
+    - sphinxcontrib.mermaid
+  config:
+    suppress_warnings: []
+    nitpicky: true
+    mermaid_version: "10.9.1"
+    mermaid_init_js: "{startOnLoad:true, theme:'neutral'}"
+    linkcheck_timeout: 20
+    linkcheck_retries: 3
+    linkcheck_report_timeouts_as_broken: false
+    linkcheck_anchors: true
+    linkcheck_ignore:
+      - "https?://.*"
+

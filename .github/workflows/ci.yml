@@ -87,6 +87,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Check frontend dependency licences
+        run: python3 ../backend/scripts/check_licences.py --npm-only
+
       - name: Lint
         run: npm run lint
 

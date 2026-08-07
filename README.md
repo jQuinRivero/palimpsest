@@ -129,6 +129,7 @@ If you install through a mirroring proxy, npm records whichever mirror answered.
 | ADR-0003 | [SQLite session store](docs/adr/0003-sqlite-session-store.md) | Why expiring comparison sessions use SQLite with TTL. |
 | ADR-0004 | [Server-side diff computation](docs/adr/0004-server-side-diff-computation.md) | Why collation runs on the backend and returns a structured payload. |
 | ADR-0005 | [Tailwind v4 CSS-first tokens](docs/adr/0005-tailwind-v4-css-first-tokens.md) | Why design tokens live in CSS `@theme` instead of `tailwind.config.js`. |
+| ADR-0008 | [Weak-copyleft dependency review](docs/adr/0008-weak-copyleft-dependency-review.md) | Why the current MPL-2.0 dependencies are acceptable under Apache-2.0 with review. |
 
 ## Architecture at a glance
 

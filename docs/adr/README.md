@@ -19,6 +19,7 @@ Format adapted from Michael Nygard's original ADR pattern.
 | [0005](./0005-tailwind-v4-css-first-tokens.md) | Adopt Tailwind v4 CSS-first `@theme` tokens; no `tailwind.config.js` | Accepted |
 | [0006](./0006-tei-parallel-segmentation-export.md) | Export TEI P5 using parallel segmentation; encode structural relations as `<linkGrp>` | Accepted |
 | [0007](./0007-stanza-boundaries.md) | Carry stanza boundaries through verse segmentation rather than losing them | Accepted |
+| [0008](./0008-weak-copyleft-dependency-review.md) | Allow current weak-copyleft dependencies with review | Accepted |
 
 ## Conventions
 

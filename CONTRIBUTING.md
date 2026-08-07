@@ -58,7 +58,24 @@ On PowerShell:
 docker run --rm -v "${PWD}:/w" -w /w node:24 npm install --package-lock-only
 ```
 
-Before committing the regenerated lockfile, rewrite any `redacted.invalid` resolved hosts back to `registry.npmjs.org`. Those feed URLs are machine-specific mirrors; the public lockfile should stay registry-canonical.
+Before committing the regenerated lockfile, rewrite any `redacted.invalid` resolved hosts back to `registry.npmjs.org`. This does **not** route installs around the approved feed: npm's `replace-registry-host` default substitutes whatever registry is configured — the Central Feed Services proxy on a managed device — for the canonical host at install time, so packages still come through the protected feed. What it avoids is pinning one machine's mirror assignment into a lockfile everyone shares, which is both unusable elsewhere and churns hundreds of lines whenever a different mirror answers.
+
+This is the opposite of the rule for `backend/uv.lock` below, because uv has no equivalent substitution.
+
+## The backend lockfile
+
+`backend/uv.lock` records the index each package was resolved from. On a Microsoft-managed device that is the approved Central Feed Services proxy, not public PyPI — direct access to `pypi.org/simple` and `files.pythonhosted.org` is blocked by policy, and routing installs through the protected feed is the point rather than an obstacle to route around.
+
+So regenerate it through the approved feed, never by finding a machine with direct PyPI access:
+
+```bash
+cd backend
+uv lock --upgrade-package <name>   # or `uv lock` after editing pyproject.toml
+```
+
+with the index configured to `https://redacted.invalid/pypi/simple`, which is what a correctly configured device already has. Do not hand-edit resolved URLs in `uv.lock`, and do not strip the feed hosts out of it: unlike npm, uv fetches the URLs the lock names rather than substituting a configured index, so a lock rewritten to canonical PyPI URLs would fail to install on the very devices this project is developed on.
+
+One consequence worth knowing: which mirror answers is assigned per request, so re-resolving churns a large number of URLs that have nothing to do with any dependency changing. If `git diff backend/uv.lock` is enormous and no version moved, you did not mean to regenerate it.
 
 ## Tests and checks
 

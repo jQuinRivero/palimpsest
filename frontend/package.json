@@ -1,8 +1,18 @@
 {
   "name": "palimpsest-frontend",
   "version": "0.1.0",
-  "private": true,
+  "description": "Typography-first reading of the difference between two versions of a literary text.",
   "license": "Apache-2.0",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jQuinRivero/palimpsest.git",
+    "directory": "frontend"
+  },
+  "homepage": "https://github.com/jQuinRivero/palimpsest#readme",
+  "bugs": {
+    "url": "https://github.com/jQuinRivero/palimpsest/issues"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",

@@ -4,6 +4,28 @@ version = "0.1.0"
 description = "Read the difference between two versions of a literary text."
 readme = "../README.md"
 license = "Apache-2.0"
+authors = [{ name = "jQuinRivero" }]
+keywords = [
+    "diff",
+    "collation",
+    "textual-criticism",
+    "digital-humanities",
+    "manuscript",
+    "tei",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Web Environment",
+    "Framework :: FastAPI",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: Apache Software License",
+    "Natural Language :: English",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Text Processing :: Linguistic",
+    "Topic :: Text Processing :: Markup :: XML",
+]
 # StrEnum (docs/05-data-schema.md) requires Python 3.11+.
 # Lowering this pin means rewriting every enum as `class X(str, Enum)`.
 requires-python = ">=3.12"
@@ -21,6 +43,12 @@ dependencies = [
     "pdfplumber>=0.11",
     "pypdf>=6.14.2",
 ]
+
+[project.urls]
+Homepage = "https://github.com/jQuinRivero/palimpsest"
+Repository = "https://github.com/jQuinRivero/palimpsest"
+Issues = "https://github.com/jQuinRivero/palimpsest/issues"
+Changelog = "https://github.com/jQuinRivero/palimpsest/blob/main/CHANGELOG.md"
 
 [dependency-groups]
 dev = [

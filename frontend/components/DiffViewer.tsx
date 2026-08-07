@@ -15,6 +15,7 @@ import { useBlockNavigation } from "@/lib/hooks/useBlockNavigation";
 import { useWindowedBlocks } from "@/lib/hooks/useWindowedBlocks";
 import { usePrintAll } from "@/lib/hooks/usePrintAll";
 import { LoadingProgress } from "./LoadingProgress";
+import { StructuralSummary } from "./StructuralSummary";
 
 function ViewModeToggle({
   mode,
@@ -212,6 +213,12 @@ export function DiffViewer({
         isComplete={windowed.isComplete}
         error={windowed.error}
         onRetry={windowed.retry}
+      />
+
+      <StructuralSummary
+        blocks={blocks}
+        visible={movesEnabled}
+        complete={windowed.isComplete}
       />
 
       {blocks.length === 0 ? (

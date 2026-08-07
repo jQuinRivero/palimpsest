@@ -1,6 +1,6 @@
 This document specifies the React component contract for uploading witnesses and reading a finished `ComparisonResult`.
 
-**Status:** Draft
+**Status:** Implemented and normative for v1
 
 **Related:** [README](./README.md) · [Data schema](./05-data-schema.md) · [API reference](./06-api-reference.md) · [Frontend architecture](./08-frontend-architecture.md) · [Design system](./09-design-system.md) · [Performance and scale](./11-performance-and-scale.md)
 
@@ -17,6 +17,7 @@ The client does not compute a diff. It uploads two witnesses, asks the backend f
 /c/[comparisonId]
 └─ DiffViewer
    ├─ DiffSummaryBar
+   ├─ StructuralSummary                explicit moved/split/merged sentences
    ├─ ViewModeToggle
    ├─ ChangeNavigator
    ├─ LoadingProgress                  while a windowed comparison loads
@@ -40,12 +41,12 @@ The gutter shows block ordinals from `a_index` and `b_index`. These are not rend
 
 | Convention | Requirement |
 |---|---|
-| Client boundary | `ManuscriptUploader`, `DiffViewer`, `VirtualizedSynopticView`, `VirtualizedUnifiedView`, `DiffSummaryBar`, `DiffBlockRow`, `TokenSpan`, `ChangeGutter`, `ChangeNavigator`, `LoadingProgress`, `ComparisonPending`, `ViewModeToggle`, `BlockConnector`, and `EmptyState` are client components because they read browser input, URL state, focus state, measured layout, or scroll position. |
+| Client boundary | `ManuscriptUploader`, `DiffViewer`, `VirtualizedSynopticView`, `VirtualizedUnifiedView`, `DiffSummaryBar`, `StructuralSummary`, `DiffBlockRow`, `TokenSpan`, `ChangeGutter`, `ChangeNavigator`, `LoadingProgress`, `ComparisonPending`, `ViewModeToggle`, `BlockConnector`, and `EmptyState` render inside client boundaries because they consume browser state or the interactive comparison payload. |
 | Naming | Public props use `comparisonId`, `comparison`, `blocks`, `metrics`, `options`, `a`, `b`, `a_index`, and `b_index` only where those names mirror the contract. UI text always says Manuscript A and Manuscript B, never positional pane labels. |
 | Memoization | `TokenSpan` is memoized by `text`, `status`, and announcement mode. `DiffBlockRow` is memoized by `DiffBlock.id`, pane, expansion state, and focus state. Handlers passed into virtualized rows are stable callbacks. |
 | DOM discipline | A 100,000-word manuscript can produce about 120,000 word tokens per witness before payload run-coalescing. A payload `Token` is a contiguous run, not necessarily one word. Rows render only the current virtual window and must never compute metrics by counting `Token` array entries. |
 | URL state | `?view=synoptic` maps to `ViewMode.SYNOPTIC`; `?view=unified` maps to `ViewMode.UNIFIED`. `?block=<index>` uses the block ordinal, not a DOM row number. `?moves=on|off` controls whether move connectors are shown; it does not mutate `DiffOptions.detect_moves`, which only records how the backend computed the payload. |
-| Testability hooks | Components expose stable `data-testid` values for the component root and block ids: `manuscript-uploader`, `diff-viewer`, `synoptic-view`, `diff-summary-bar`, `block-loading-status`, `diff-block-row-{id}`, and `token-{status}`. Hooks must not encode visual position. |
+| Testability hooks | Components expose stable `data-testid` values for the component root and block ids: `manuscript-uploader`, `diff-viewer`, `synoptic-view`, `diff-summary-bar`, `structural-summary`, `structural-relationship-{status}`, `block-loading-status`, `diff-block-row-{id}`, and `token-{status}`. Hooks must not encode visual position. |
 
 ## ManuscriptUploader
 
@@ -433,44 +434,58 @@ Structural findings — moved, split, merged, and changed stanza breaks — are 
 ```ts
 export interface DiffSummaryBarProps {
   metrics: DiffMetrics;
-  blocks: DiffBlock[];
-  total_blocks: number;
-  activeBlockIndex?: number | null;
-  onNavigateToBlock?: (blockIndex: number) => void;
-  isWindowed?: boolean;
 }
 ```
 
 ### Internal state
 
-| State | Purpose |
-|---|---|
-| `focusedMinimapIndex` | Keyboard focus within the change-density minimap. |
-| `visibleRange` | The loaded or visible block range, used to distinguish full and windowed payloads. |
+None. Every displayed value is derived directly from `DiffMetrics`.
 
 ### Behaviour
 
-The bar renders `DiffMetrics.similarity`, `edit_count`, `insertions`, `deletions`, `churn`, `blocks_moved`, `blocks_split`, `blocks_merged`, `a_word_count`, and `b_word_count`. Percent values render with one decimal place below 99.95% and as whole `0%` or `100%` at the extremes. Counts use locale-aware grouping. A comparison with no changes reads "100% similar, 0 edits"; a comparison with no shared tokens reads "0% similar" and reports insertions and deletions rather than implying failure.
+The bar renders rounded `DiffMetrics.similarity`, wording changes as insertion/deletion word counts (or "No wording changes"), structural counts, and the A-to-B word-count transition. Counts use locale-aware grouping.
 
-`insertions`, `deletions`, `edit_count`, and `unchanged_tokens` are word counts supplied by `DiffMetrics`, never counts derived from `Token[]` length. `DiffSummaryBar` may aggregate block statuses for navigation density, but it must not derive textual metrics from rendered tokens.
-
-The change-density minimap represents all `total_blocks`. Each segment aggregates blocks by status and doubles as navigation. In windowed mode, unloaded ranges remain visible as neutral segments and request their page before navigation.
+`insertions`, `deletions`, `edit_count`, and `unchanged_tokens` are word counts supplied by `DiffMetrics`, never counts derived from `Token[]` length. The bar must not derive textual metrics from rendered tokens.
 
 ### Accessibility
 
-Metrics are grouped in a labelled summary region. The minimap is keyboard navigable and exposes each segment as a button with an accessible name such as "Blocks 400 to 449, high change density".
+Metrics are grouped in a region labelled "Comparison summary". Wording and structural findings are separate phrases so "No wording changes" never implies "nothing changed".
 
 ### Edge, empty, and error states
 
 | State | Rendering |
 |---|---|
-| `total_blocks === 0` | Show word counts and "No comparable blocks". |
-| All unchanged | Show a quiet minimap and do not hide the navigation control. |
-| All changed | Show "0% similar" and a full-density minimap without warning styling. |
+| All wording unchanged | Show "No wording changes"; retain any structural counts. |
+| No structural findings | Omit the structural-count phrase. |
+| No shared wording | Show `0% similar` and the insertion/deletion word counts. |
 
 ### Design tokens consumed
 
 `DiffSummaryBar` consumes `--color-ink`, `--color-ink-muted`, `--color-paper`, `--color-rule`, `--color-rubric`, `--color-addition`, `--color-deletion`, `--color-moved`, `--font-ui`, and `--font-mono`.
+
+## StructuralSummary
+
+`StructuralSummary` translates `MOVED`, `SPLIT`, and `MERGED` payload
+relationships into sentences before the manuscript begins. Connectors and
+gutter glyphs remain useful for tracing the rows visually, but they are not
+treated as a vocabulary a first-time reader should already know.
+
+Examples:
+
+- "Moved — passage 1 in Manuscript A appears as passage 2 in Manuscript B."
+- "Split — passage 3 in Manuscript A became passages 3 and 4 in Manuscript B."
+- "Merged — passages 3 and 4 in Manuscript A became passage 3 in Manuscript B."
+
+The component groups split and merged members by `group_id`, renders at most
+five relationships, and directs the reader to change navigation for the
+remainder. It renders only after every block has loaded: describing a partial
+split group as one-to-one while its second member is outside the current
+window would be a plausible lie.
+
+The structural-marker toggle hides this summary together with the gutter and
+connector affordances. Each sentence carries a visible text badge (`Moved`,
+`Split`, or `Merged`), so the explanation does not depend on colour or a
+special glyph.
 
 ## DiffBlockRow
 

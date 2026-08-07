@@ -89,6 +89,12 @@ test("a moved passage reads as moved, not as a deletion and an insertion", async
   await expect(marker).toBeVisible();
   await expect(marker).toHaveText(GLYPH.MOVED);
 
+  const explanation = page.getByTestId("structural-relationship-MOVED");
+  await expect(explanation).toContainText("Moved");
+  await expect(explanation).toContainText(
+    /passage \d+ in Manuscript A appears as passage \d+ in Manuscript B/i,
+  );
+
   // The distance is the whole information content of a move marker: "moved"
   // alone does not tell a reader where the passage went.
   await expect(marker).toHaveAttribute("title", /^moved \d+ blocks? (earlier|later)$/);
@@ -116,6 +122,9 @@ test("a paragraph split reads as a split group with no wording change", async ({
   // paragraphs came from one.
   await expect(page.locator('[data-testid^="block-connector-"]').first()).toBeVisible();
   await expect(page.getByTestId("gutter-marker-SPLIT").first()).toHaveText(GLYPH.SPLIT);
+  await expect(page.getByTestId("structural-relationship-SPLIT")).toContainText(
+    /passage \d+ in Manuscript A became passages \d+ and \d+ in Manuscript B/i,
+  );
 
   // The author changed the paragraphing and not one word.
   await expect(page.getByTestId("diff-summary-bar")).toContainText(
@@ -136,6 +145,9 @@ test("a merged pair reads as a merge group with no wording change", async ({
 
   await expect(page.getByTestId("gutter-marker-MERGED").first()).toHaveText(GLYPH.MERGED);
   await expect(page.locator('[data-testid^="block-connector-"]').first()).toBeVisible();
+  await expect(page.getByTestId("structural-relationship-MERGED")).toContainText(
+    /passages \d+ and \d+ in Manuscript A became passage \d+ in Manuscript B/i,
+  );
 
   await expect(page.getByTestId("diff-summary-bar")).toContainText(
     /no wording changes/i,
@@ -150,6 +162,7 @@ test("the moves toggle suppresses move affordances and survives sharing", async 
 
   await gotoComparison(page, `/c/${id}`);
   await expect(page.getByTestId("diff-viewer")).toHaveAttribute("data-moves", "on");
+  await expect(page.getByTestId("structural-summary")).toBeVisible();
   const connector = page.locator('[data-testid^="block-connector-"]').first();
   await expect(connector).toHaveAttribute("data-visible", "true");
 
@@ -161,10 +174,12 @@ test("the moves toggle suppresses move affordances and survives sharing", async 
   // state: a reader who turned markers off should see plain prose.
   await expect(connector).toHaveAttribute("data-visible", "false");
   await expect(page.getByTestId("gutter-marker-MOVED").first()).toHaveText("");
+  await expect(page.getByTestId("structural-summary")).toHaveCount(0);
 
   // A researcher must be able to send a colleague the suppressed view.
   await gotoComparison(page, `/c/${id}?moves=off`);
   await expect(page.getByTestId("diff-viewer")).toHaveAttribute("data-moves", "off");
+  await expect(page.getByTestId("structural-summary")).toHaveCount(0);
   await expect(
     page.locator('[data-testid^="block-connector-"]').first(),
   ).toHaveAttribute("data-visible", "false");

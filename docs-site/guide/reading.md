@@ -26,6 +26,12 @@ The default granularity is word level. Tokens in the payload are rendered as unc
 `MERGED`
 : Multiple Manuscript A blocks became one Manuscript B block.
 
+The **What changed structurally** panel writes those relationships out before
+the manuscripts. For example: "Passage 1 in Manuscript A appears as passage 2
+in Manuscript B" and "Passage 3 in Manuscript A became passages 3 and 4 in
+Manuscript B." The symbols in the gutters then help trace those named passages;
+they are not the only explanation.
+
 Verse is segmented as one `VERSE_LINE` block per line, so a transposed line can be reported as `MOVED`. Stanza boundaries are carried separately so a stanza redivision is also visible.
 
 ## Navigation and deep links

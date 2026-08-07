@@ -119,9 +119,9 @@ Token-level cues and block-level cues use different channels. `INSERTION` and `D
 | `MODIFIED` | Gutter marker indicating changed tokens; inline tokens carry `INSERTION` and `DELETION` treatments. |
 | `INSERTED` | Block exists only in Manuscript B. The Manuscript B pane shows inserted content; the Manuscript A side reserves an alignment gap only when needed for synoptic reading. |
 | `DELETED` | Block exists only in Manuscript A. The Manuscript A pane shows deleted content using the through-text treatment; Manuscript B reserves an alignment gap only when needed. |
-| `MOVED` | Gutter marker plus `BlockConnector` using `--color-moved`; optional endpoint underlay uses `--color-moved-underlay`. Text itself is not recoloured as moved. |
-| `SPLIT` | Gutter marker plus grouped connector from one Manuscript A block to multiple Manuscript B blocks. Members share `group_id`; the connector, not token tint, communicates the relationship. |
-| `MERGED` | Gutter marker plus grouped connector from multiple Manuscript A blocks to one Manuscript B block. Members share `group_id`; the connector, not token tint, communicates the relationship. |
+| `MOVED` | Visible `Moved` sentence naming the A and B passage positions, plus gutter marker and `BlockConnector` using `--color-moved`; optional endpoint underlay uses `--color-moved-underlay`. Text itself is not recoloured as moved. |
+| `SPLIT` | Visible `Split` sentence naming the one A passage and its B passages, plus grouped connector. Members share `group_id`; token tint never communicates the relationship. |
+| `MERGED` | Visible `Merged` sentence naming the A passages and their one B passage, plus grouped connector. Members share `group_id`; token tint never communicates the relationship. |
 
 `ARTIFACT` is a `BlockKind`, not a `BlockStatus`. `BlockKind.ARTIFACT` blocks are de-emphasised and collapsible. They use muted ink, smaller UI labeling, and no default participation in the main change rhythm because running heads, folio numbers, and footers are extracted but excluded from diff by default.
 
@@ -135,9 +135,9 @@ Required redundant channels:
 |---|---|
 | `INSERTION` | Fine underline, addition gutter marker, and screen-reader text. |
 | `DELETION` | Hairline strike, deletion gutter marker, and screen-reader text. |
-| `MOVED` | Diamond gutter marker and connector. |
-| `SPLIT` | Forked gutter marker and branching connector. |
-| `MERGED` | Joined gutter marker and converging connector. |
+| `MOVED` | Text label and position sentence, diamond gutter marker, and connector. |
+| `SPLIT` | Text label and passage sentence, forked gutter marker, and branching connector. |
+| `MERGED` | Text label and passage sentence, joined gutter marker, and converging connector. |
 | `BlockKind.ARTIFACT` | Collapsed disclosure label and muted block chrome. |
 
 Inline ARIA uses hidden labels around changed tokens:

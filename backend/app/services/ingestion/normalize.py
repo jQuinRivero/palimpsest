@@ -62,6 +62,211 @@ class NormalizationBlock:
     starts_stanza: bool = False
 
 
+@dataclass(frozen=True, slots=True)
+class _Provenance:
+    """Where a document came from.
+
+    These five travel together everywhere and are overridden as a set when the
+    source is already a ``Document``, so they are carried as one value rather
+    than five parallel locals.
+    """
+
+    document_id: str
+    title: str
+    source_format: SourceFormat
+    parser_name: str
+    parser_version: str
+
+
+@dataclass(slots=True)
+class _SegmentationCounts:
+    """What segmentation did, so it can be reported rather than assumed."""
+
+    joins: int = 0
+    verse_passages: int = 0
+    verse_lines: int = 0
+
+
+def _coerce_source(
+    source: str | Document | list[NormalizationBlock],
+    provenance: _Provenance,
+    warnings: list[IngestionWarning],
+) -> tuple[list[NormalizationBlock], _Provenance, list[IngestionWarning], str]:
+    """Reduce the three accepted input shapes to one.
+
+    Also returns the text as it arrived, because the control-character check
+    has to run against that rather than against the normalized result —
+    normalization is what removes them.
+    """
+    if isinstance(source, Document):
+        # A parsed document already knows its own provenance and warnings, and
+        # they win: re-normalizing must not relabel a witness.
+        return (
+            [
+                NormalizationBlock(
+                    text=block.text,
+                    kind=block.kind,
+                    style=block.style,
+                    page=block.page,
+                    confidence=block.confidence,
+                    starts_stanza=block.starts_stanza,
+                )
+                for block in source.blocks
+            ],
+            _Provenance(
+                document_id=source.id,
+                title=source.title,
+                source_format=source.source_format,
+                parser_name=source.metadata.parser_name,
+                parser_version=source.metadata.parser_version,
+            ),
+            list(source.warnings),
+            "\n".join(block.text for block in source.blocks),
+        )
+
+    if isinstance(source, str):
+        candidates = [
+            NormalizationBlock(text=part) for part in _split_blocks(_normalize_text(source))
+        ]
+        return candidates, provenance, warnings, source
+
+    return source, provenance, warnings, "\n".join(candidate.text for candidate in source)
+
+
+def _segment(
+    candidates: list[NormalizationBlock],
+    *,
+    reflow_lines: bool,
+    corpus: str,
+) -> tuple[list[NormalizationBlock], _SegmentationCounts]:
+    """Normalize each candidate and split it into the blocks that get compared."""
+    segmented: list[NormalizationBlock] = []
+    counts = _SegmentationCounts()
+
+    for candidate in candidates:
+        normalized_text = _normalize_text(candidate.text)
+
+        # Ligatures are a rendering artefact, never authorial, so they fold
+        # unconditionally and before anything that inspects word shape.
+        normalized_text = fold_ligatures(normalized_text)
+
+        if reflow_lines and candidate.kind not in _REFLOW_EXEMPT_KINDS:
+            # Dehyphenation runs before reflow: it needs the line breaks that
+            # reflow is about to remove.
+            normalized_text, decisions = dehyphenate(
+                normalized_text, join_by_default=True, corpus=corpus
+            )
+            counts.joins += sum(1 for d in decisions if d.decision is Decision.JOINED)
+            normalized_text = reflow(normalized_text)
+            normalized_text = _normalize_text(normalized_text)
+
+        for text in _split_blocks(normalized_text):
+            kind = _assign_kind(candidate)
+            lines = _verse_lines(text) if kind is BlockKind.PARAGRAPH else None
+
+            if lines is None:
+                segmented.append(
+                    NormalizationBlock(
+                        text=text,
+                        kind=kind,
+                        style=candidate.style,
+                        page=candidate.page,
+                        confidence=candidate.confidence,
+                    )
+                )
+                continue
+
+            # One block per line. In poetry the line is the unit a scholar
+            # compares, so a stanza-sized block would report a single changed
+            # word as a wholly modified stanza and would hide a transposed line
+            # entirely — moves are detected between blocks, never inside one.
+            counts.verse_passages += 1
+            counts.verse_lines += len(lines)
+            for position, line in enumerate(lines):
+                segmented.append(
+                    NormalizationBlock(
+                        text=line,
+                        kind=BlockKind.VERSE_LINE,
+                        style=candidate.style,
+                        page=candidate.page,
+                        confidence=candidate.confidence,
+                        # The candidate is one stanza, because candidates are
+                        # separated by blank lines. Its first line is therefore
+                        # where the stanza begins, and this is the last point at
+                        # which that is knowable — after segmentation the blank
+                        # line is gone. See ADR-0007.
+                        starts_stanza=position == 0,
+                    )
+                )
+
+    return segmented, counts
+
+
+def _segmentation_warnings(counts: _SegmentationCounts) -> list[IngestionWarning]:
+    """Announce the two decisions that changed the text or the unit of comparison."""
+    warnings: list[IngestionWarning] = []
+
+    if counts.joins:
+        warnings.append(
+            IngestionWarning(
+                code=DEHYPHENATION_WARNING,
+                message=(
+                    f"Closed up {counts.joins} line-ending "
+                    f"{'hyphen' if counts.joins == 1 else 'hyphens'} broken across lines. "
+                    "Hyphens with evidence of being part of the word were preserved."
+                ),
+                block_id=None,
+            )
+        )
+
+    if counts.verse_passages:
+        warnings.append(
+            IngestionWarning(
+                code=VERSE_WARNING,
+                message=(
+                    f"Read {counts.verse_passages} "
+                    f"{'passage' if counts.verse_passages == 1 else 'passages'} as verse and "
+                    f"segmented {counts.verse_lines} lines. Each line is compared "
+                    "separately; if this text is prose, its blocks have been split "
+                    "more finely than intended."
+                ),
+                block_id=None,
+            )
+        )
+
+    return warnings
+
+
+def _build_blocks(segmented: list[NormalizationBlock], witness: str) -> list[Block]:
+    """Assign ids and character offsets into the reconstructed full text.
+
+    Offsets assume blocks are rejoined with a blank line, which is what
+    ``Document.full_text`` does; the two must not drift apart.
+    """
+    blocks: list[Block] = []
+    offset = 0
+    for index, candidate in enumerate(segmented):
+        if index:
+            offset += 2
+        blocks.append(
+            Block(
+                id=block_id(witness, index),
+                index=index,
+                kind=candidate.kind,
+                text=candidate.text,
+                style=candidate.style,
+                page=candidate.page,
+                char_start=offset,
+                char_end=offset + len(candidate.text),
+                starts_stanza=candidate.starts_stanza,
+                confidence=candidate.confidence,
+                bbox=None,
+            )
+        )
+        offset += len(candidate.text)
+    return blocks
+
+
 def normalize(
     source: str | Document | list[NormalizationBlock],
     *,
@@ -83,43 +288,24 @@ def normalize(
     ``reflow_lines`` should be set by parsers whose line breaks are a property
     of the *rendering* rather than the text — PDF above all. Plain text and
     Markdown leave it off, because there the line breaks are the author's own
-    and joining them would be a fabrication.
     """
-    base_warnings = list(warnings or [])
-    candidates: list[NormalizationBlock]
+    provenance = _Provenance(
+        document_id=document_id,
+        title=title,
+        source_format=source_format,
+        parser_name=parser_name,
+        parser_version=parser_version,
+    )
 
-    if isinstance(source, Document):
-        document_id = source.id
-        title = source.title
-        source_format = source.source_format
-        parser_name = source.metadata.parser_name
-        parser_version = source.metadata.parser_version
-        base_warnings = list(source.warnings)
-        raw_scan = "\n".join(block.text for block in source.blocks)
-        candidates = [
-            NormalizationBlock(
-                text=block.text,
-                kind=block.kind,
-                style=block.style,
-                page=block.page,
-                confidence=block.confidence,
-                starts_stanza=block.starts_stanza,
-            )
-            for block in source.blocks
-        ]
-    elif isinstance(source, str):
-        raw_scan = source
-        candidates = [
-            NormalizationBlock(text=part) for part in _split_blocks(_normalize_text(source))
-        ]
-    else:
-        raw_scan = "\n".join(candidate.text for candidate in source)
-        candidates = source
+    candidates, provenance, base_warnings, raw_text = _coerce_source(
+        source, provenance, list(warnings or [])
+    )
 
-    # Scanned before normalization, because normalization is what removes them.
-    # The title is checked too: it comes from the upload filename, so it is the
-    # one field a researcher never typed and an attacker fully controls.
-    if _FORBIDDEN_CONTROLS.search(raw_scan) or _FORBIDDEN_CONTROLS.search(title):
+    # Checked against the text as it arrived, since normalization is what
+    # removes them. The title is checked too: it comes from the upload
+    # filename, so it is the one field a researcher never typed and a hostile
+    # uploader entirely controls.
+    if _FORBIDDEN_CONTROLS.search(raw_text) or _FORBIDDEN_CONTROLS.search(provenance.title):
         base_warnings.append(
             IngestionWarning(
                 code=CONTROL_CHARACTER_WARNING,
@@ -132,144 +318,31 @@ def normalize(
             )
         )
 
-    title = _normalize_title(title)
-
-    normalized_blocks: list[NormalizationBlock] = []
-    join_count = 0
-    verse_passages = 0
-    verse_line_count = 0
-
     # Same-document evidence for dehyphenation is drawn from the whole witness,
     # so a compound written inline in chapter nine can settle an ambiguous
     # line-break hyphen in chapter one.
     corpus = _normalize_text("\n\n".join(candidate.text for candidate in candidates))
 
-    for candidate in candidates:
-        normalized_text = _normalize_text(candidate.text)
+    segmented, counts = _segment(candidates, reflow_lines=reflow_lines, corpus=corpus)
+    base_warnings.extend(_segmentation_warnings(counts))
 
-        # Ligatures are a rendering artefact, never authorial, so they fold
-        # unconditionally and before anything that inspects word shape.
-        normalized_text = fold_ligatures(normalized_text)
-
-        if reflow_lines and candidate.kind not in _REFLOW_EXEMPT_KINDS:
-            # Dehyphenation runs before reflow: it needs the line breaks that
-            # reflow is about to remove.
-            normalized_text, decisions = dehyphenate(
-                normalized_text, join_by_default=True, corpus=corpus
-            )
-            join_count += sum(1 for d in decisions if d.decision is Decision.JOINED)
-            normalized_text = reflow(normalized_text)
-            normalized_text = _normalize_text(normalized_text)
-
-        for text in _split_blocks(normalized_text):
-            kind = _assign_kind(candidate)
-            lines = _verse_lines(text) if kind is BlockKind.PARAGRAPH else None
-
-            if lines is not None:
-                # One block per line. In poetry the line is the unit a scholar
-                # compares, so a stanza-sized block would report a single
-                # changed word as a wholly modified stanza and would hide a
-                # transposed line entirely — moves are detected between
-                # blocks, never inside one.
-                verse_passages += 1
-                verse_line_count += len(lines)
-                for position, line in enumerate(lines):
-                    normalized_blocks.append(
-                        NormalizationBlock(
-                            text=line,
-                            kind=BlockKind.VERSE_LINE,
-                            style=candidate.style,
-                            page=candidate.page,
-                            confidence=candidate.confidence,
-                            # The candidate is one stanza, because candidates
-                            # are separated by blank lines. Its first line is
-                            # therefore where the stanza begins, and this is
-                            # the last point at which that is knowable — after
-                            # segmentation the blank line is gone. See
-                            # ADR-0007.
-                            starts_stanza=position == 0,
-                        )
-                    )
-                continue
-
-            normalized_blocks.append(
-                NormalizationBlock(
-                    text=text,
-                    kind=kind,
-                    style=candidate.style,
-                    page=candidate.page,
-                    confidence=candidate.confidence,
-                )
-            )
-
-    if join_count:
-        base_warnings.append(
-            IngestionWarning(
-                code=DEHYPHENATION_WARNING,
-                message=(
-                    f"Closed up {join_count} line-ending "
-                    f"{'hyphen' if join_count == 1 else 'hyphens'} broken across lines. "
-                    "Hyphens with evidence of being part of the word were preserved."
-                ),
-                block_id=None,
-            )
-        )
-
-    if verse_passages:
-        base_warnings.append(
-            IngestionWarning(
-                code=VERSE_WARNING,
-                message=(
-                    f"Read {verse_passages} "
-                    f"{'passage' if verse_passages == 1 else 'passages'} as verse and "
-                    f"segmented {verse_line_count} lines. Each line is compared "
-                    "separately; if this text is prose, its blocks have been split "
-                    "more finely than intended."
-                ),
-                block_id=None,
-            )
-        )
-
-    blocks: list[Block] = []
-    offset = 0
-    for index, candidate in enumerate(normalized_blocks):
-        if index:
-            offset += 2
-        text = candidate.text
-        blocks.append(
-            Block(
-                id=block_id(witness, index),
-                index=index,
-                kind=candidate.kind,
-                text=text,
-                style=candidate.style,
-                page=candidate.page,
-                char_start=offset,
-                char_end=offset + len(text),
-                starts_stanza=candidate.starts_stanza,
-                confidence=candidate.confidence,
-                bbox=None,
-            )
-        )
-        offset += len(text)
-
+    blocks = _build_blocks(segmented, witness)
     full_text = "\n\n".join(block.text for block in blocks)
-    metadata = DocumentMetadata(
-        word_count=len(full_text.split()),
-        block_count=len(blocks),
-        char_count=len(full_text),
-        detected_language=None,
-        parser_name=parser_name,
-        parser_version=parser_version,
-        ocr_confidence=None,
-    )
 
     return Document(
-        id=document_id,
-        title=title,
-        source_format=source_format,
+        id=provenance.document_id,
+        title=_normalize_title(provenance.title),
+        source_format=provenance.source_format,
         blocks=blocks,
-        metadata=metadata,
+        metadata=DocumentMetadata(
+            word_count=len(full_text.split()),
+            block_count=len(blocks),
+            char_count=len(full_text),
+            detected_language=None,
+            parser_name=provenance.parser_name,
+            parser_version=provenance.parser_version,
+            ocr_confidence=None,
+        ),
         warnings=base_warnings,
     )
 

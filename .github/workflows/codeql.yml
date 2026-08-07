@@ -10,11 +10,22 @@ on:
 permissions:
   contents: read
   security-events: write
+  # Required for CodeQL on a private repository: the analyze step reads its own
+  # workflow run through the Actions API, and without this it fails at upload
+  # with "Resource not accessible by integration" after doing all the work.
+  actions: read
 
 jobs:
   analyze:
     name: Analyze (${{ matrix.language }})
     runs-on: ubuntu-latest
+    # Code scanning needs GitHub Advanced Security on a private repository, and
+    # this one is private until its public release. The analysis runs fine; it
+    # is the upload of results that is refused, so the job would fail every run
+    # for a reason nobody can fix by changing the code. Skipping keeps the
+    # signal honest, and it starts running by itself the day the repository
+    # becomes public — which is the day the results become actionable.
+    if: github.repository_visibility == 'public'
     strategy:
       fail-fast: false
       matrix:

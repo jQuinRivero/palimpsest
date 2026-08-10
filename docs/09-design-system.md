@@ -108,8 +108,8 @@ Token-level cues and block-level cues use different channels. `INSERTION` and `D
 | `TokenStatus` | Rendering |
 |---|---|
 | `UNCHANGED` | Normal manuscript ink, no underlay, no decoration. |
-| `INSERTION` | A soft tinted underlay using `--color-addition-underlay`, clipped to the token text rather than spanning the full row. The token text uses `--color-addition` and `font-weight: 520` when supported, falling back to `font-weight: 500`. It also receives a fine underline offset away from the glyphs so colour is not the only signal. |
-| `DELETION` | Shown through: text uses `--color-deletion` at reduced visual emphasis over `--color-deletion-underlay`. A one-device-pixel hairline strike passes through the x-height; it is never a thick bar. In synoptic view, deletions appear in the Manuscript A pane only. In unified view, deletions and insertions both appear inline in reading order. |
+| `INSERTION` | A token-bounded tinted underlay using `--color-addition-underlay`, a visible `+` prefix, medium-weight text using `--color-addition`, and a two-pixel underline offset away from the glyphs. |
+| `DELETION` | A token-bounded `--color-deletion-underlay`, visible `−` prefix, deletion ink, and a two-pixel strike through the x-height. In synoptic view, deletions appear in Manuscript A only; unified view carries both readings inline. |
 
 ### BlockStatus rendering
 
@@ -133,8 +133,8 @@ Required redundant channels:
 
 | Change | Non-colour channel |
 |---|---|
-| `INSERTION` | Fine underline, addition gutter marker, and screen-reader text. |
-| `DELETION` | Hairline strike, deletion gutter marker, and screen-reader text. |
+| `INSERTION` | Visible `+`, tinted token box, two-pixel underline, and screen-reader text. |
+| `DELETION` | Visible `−`, tinted token box, two-pixel strike, and screen-reader text. |
 | `MOVED` | Text label and position sentence, diamond gutter marker, and connector. |
 | `SPLIT` | Text label and passage sentence, forked gutter marker, and branching connector. |
 | `MERGED` | Text label and passage sentence, joined gutter marker, and converging connector. |

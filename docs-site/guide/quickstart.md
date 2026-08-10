@@ -41,9 +41,9 @@ We had little before us.
 
 palimpsest reports **97% similar**, **+1 word**, **−1 word**, and **1 block
 moved, 2 blocks split**. In the manuscripts, *nothing* is struck through in
-Manuscript A and *little* is underlined in Manuscript B. The moved passage is
-not misreported as a deletion and insertion, and the paragraph split does not
-inflate the word-edit count.
+Manuscript A with a visible `−`, and *little* is underlined in Manuscript B
+with a visible `+`. The moved passage is not misreported as a deletion and
+insertion, and the paragraph split does not inflate the word-edit count.
 
 The comparison URL is shareable until the session expires. The ID is unguessable and expiry is enforced by the SQLite session store.
 

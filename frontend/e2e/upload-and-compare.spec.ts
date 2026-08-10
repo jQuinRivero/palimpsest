@@ -28,6 +28,8 @@ test("uploads two witnesses and renders a typography-first comparison", async ({
   await expect(page.getByRole("heading", { name: "Manuscript B" })).toBeVisible();
   await expect(page.getByTestId("token-INSERTION").first()).toBeVisible();
   await expect(page.getByTestId("token-DELETION").first()).toBeVisible();
+  await expect(page.getByTestId("token-sign-INSERTION").first()).toHaveText("+");
+  await expect(page.getByTestId("token-sign-DELETION").first()).toHaveText("\u2212");
 
   const summary = page.getByTestId("diff-summary-bar");
   await expect(summary).toBeVisible();

@@ -7,7 +7,7 @@
 **Unified** view renders one stream. Deletions remain visible and insertions appear inline, so the earlier reading is still present rather than erased.
 
 ```{image} ../_static/unified-view.png
-:alt: Unified view of the same comparison, rendering one continuous stream instead of two panes. The moved and split blocks are marked in the margin, while "nothing" and "little" carry the deletion and insertion treatments.
+:alt: Unified view of the same comparison, rendering one continuous stream instead of two panes. The moved and split blocks are marked in the margin, while "nothing" has a minus sign and strike and "little" has a plus sign and underline.
 :width: 100%
 ```
 

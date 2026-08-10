@@ -16,7 +16,7 @@ Here is what that buys in one example: one passage moved, one paragraph split
 in two, and one word changed from *nothing* to *little*:
 
 ```{image} ../_static/synoptic-view.png
-:alt: Synoptic view. The summary bar reads "97% similar", "+1 word", "−1 word", "1 block moved, 2 blocks split". Manuscript A and Manuscript B are side by side. "Nothing" is struck through in A and "little" is underlined in B; a panel explains the moved and split passages in words.
+:alt: Synoptic view. The summary bar reads "97% similar", "+1 word", "−1 word", "1 block moved, 2 blocks split". Manuscript A and Manuscript B are side by side. "Nothing" has a visible minus sign and strike in A; "little" has a visible plus sign and underline in B. A panel explains the moved and split passages in words.
 :width: 100%
 ```
 

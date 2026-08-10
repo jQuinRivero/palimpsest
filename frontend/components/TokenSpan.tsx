@@ -6,9 +6,14 @@ const TONE: Record<TokenStatus, string> = {
   // at prose density those strobe and make sustained reading impossible.
   UNCHANGED: "",
   INSERTION:
-    "bg-addition-underlay text-addition decoration-addition/50 underline decoration-1 underline-offset-4",
+    "box-decoration-clone rounded-sm bg-addition-underlay px-1 font-medium text-addition",
   DELETION:
-    "bg-deletion-underlay text-deletion line-through decoration-deletion/60 decoration-1",
+    "box-decoration-clone rounded-sm bg-deletion-underlay px-1 text-deletion",
+};
+
+const DECORATION: Record<Exclude<TokenStatus, "UNCHANGED">, string> = {
+  INSERTION: "underline decoration-addition decoration-2 underline-offset-4",
+  DELETION: "line-through decoration-deletion decoration-2",
 };
 
 /**
@@ -22,6 +27,11 @@ const LABEL: Record<TokenStatus, string | null> = {
   DELETION: "deleted",
 };
 
+const SIGN: Record<Exclude<TokenStatus, "UNCHANGED">, string> = {
+  INSERTION: "+",
+  DELETION: "\u2212",
+};
+
 export function TokenSpan({ token }: { token: Token }) {
   const status = token.status as TokenStatus;
 
@@ -32,9 +42,20 @@ export function TokenSpan({ token }: { token: Token }) {
   const label = LABEL[status];
 
   return (
-    <span className={TONE[status]} data-testid={`token-${status}`}>
+    <span
+      className={TONE[status]}
+      data-testid={`token-${status}`}
+      data-token-status={status}
+    >
       <span className="sr-only"> {label} text begins </span>
-      {token.text}
+      <span
+        aria-hidden="true"
+        className="mr-0.5 select-none font-mono text-[0.75em] font-bold no-underline"
+        data-testid={`token-sign-${status}`}
+      >
+        {SIGN[status]}
+      </span>
+      <span className={DECORATION[status]}>{token.text}</span>
       <span className="sr-only"> {label} text ends </span>
     </span>
   );

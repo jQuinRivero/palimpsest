@@ -14,7 +14,8 @@
 
 ## A worked example
 
-Paste these two witnesses. Nothing is rewritten — the second paragraph has moved to the front, and the last paragraph has been split in two:
+Paste these two witnesses. The second paragraph moves to the front, the last
+paragraph splits in two, and one word changes from **nothing** to **little**:
 
 Manuscript A:
 
@@ -35,10 +36,14 @@ It was the best of times, it was the worst of times.
 
 We had everything before us.
 
-We had nothing before us.
+We had little before us.
 ```
 
-palimpsest reports **100% similar**, **no wording changes**, and **1 block moved, 2 blocks split**. Not one word is marked as inserted or deleted, because not one word was.
+palimpsest reports **97% similar**, **+1 word**, **−1 word**, and **1 block
+moved, 2 blocks split**. In the manuscripts, *nothing* is struck through in
+Manuscript A and *little* is underlined in Manuscript B. The moved passage is
+not misreported as a deletion and insertion, and the paragraph split does not
+inflate the word-edit count.
 
 The comparison URL is shareable until the session expires. The ID is unguessable and expiry is enforced by the SQLite session store.
 

@@ -28,7 +28,7 @@ It was the best of times, it was the worst of times.
 
 We had everything before us.
 
-We had nothing before us.`;
+We had little before us.`;
 
 function sleep(ms) {
   return new Promise((resolveSleep) => setTimeout(resolveSleep, ms));

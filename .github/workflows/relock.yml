@@ -47,7 +47,7 @@ jobs:
         run: python scripts/check_lockfile_indexes.py
 
       - name: Open a pull request
-        uses: peter-evans/create-pull-request@v7
+        uses: peter-evans/create-pull-request@v8
         with:
           branch: chore/relock
           delete-branch: true

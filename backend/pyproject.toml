@@ -2,7 +2,7 @@
 name = "palimpsest"
 version = "0.1.0"
 description = "Read the difference between two versions of a literary text."
-readme = "../README.md"
+readme = "README.md"
 license = "Apache-2.0"
 authors = [{ name = "jQuinRivero" }]
 keywords = [

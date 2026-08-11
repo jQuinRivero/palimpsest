@@ -39,10 +39,16 @@ jobs:
       - name: Build HTML
         run: uv --directory docs-site run jupyter-book build .
 
-      # A missing sitemap does not fail a Sphinx build, it just quietly stops
-      # existing — and nothing else here would notice that search engines had
-      # lost the page index.
-      - name: Check the sitemap was generated
+      # Generated from the built output rather than by a Sphinx extension: the
+      # extension collected pages through per-page events and produced sixteen
+      # URLs locally but one on this runner, which is the kind of failure that
+      # ships silently.
+      - name: Generate the sitemap
+        run: |
+          uv --directory docs-site run python generate_sitemap.py \
+            _build/html https://jquinrivero.github.io/palimpsest/
+
+      - name: Check the sitemap
         run: |
           sitemap=docs-site/_build/html/sitemap.xml
           test -s "$sitemap" || { echo "::error::$sitemap missing or empty"; exit 1; }

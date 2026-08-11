@@ -29,15 +29,11 @@ parse:
 sphinx:
   extra_extensions:
     - sphinxcontrib.mermaid
-    - sphinx_sitemap
   config:
-    # Canonical URLs, the sitemap, and the social-card tags below all need to
-    # know where the site actually lives. Without it Sphinx emits no canonical
-    # link at all, and the sitemap cannot name absolute URLs.
+    # Canonical URLs and the social-card tags need to know where the site
+    # actually lives. Without it Sphinx emits no canonical link at all.
+    # generate_sitemap.py is given the same value, so the two cannot drift.
     html_baseurl: "https://jquinrivero.github.io/palimpsest/"
-    # Jupyter Book writes one HTML file per page; the default scheme would add
-    # a language/version prefix this site does not use.
-    sitemap_url_scheme: "{link}"
     templates_path: ["_templates"]
     html_extra_path: ["_extra"]
     suppress_warnings: []

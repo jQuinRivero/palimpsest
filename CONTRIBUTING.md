@@ -147,6 +147,28 @@ npm run check:types-drift
 
 Both type-generation commands fetch `http://127.0.0.1:8000/api/v1/openapi.json`. If the API is not running, they fail with `Could not read the OpenAPI schema` and `connect ECONNREFUSED 127.0.0.1:8000`, followed by the reminder to start the backend first.
 
+## Documentation and media assets
+
+The screenshots, the README demo, and the social preview image are all
+generated, so they can be regenerated rather than recreated by hand when the
+interface changes.
+
+```bash
+node docs-site/capture_screenshots.mjs   # docs-site/_static/*.png
+node docs-site/capture_demo.mjs          # docs-site/_static/demo.gif
+node scripts/capture_social_preview.mjs  # docs-site/_static/social-preview.png
+```
+
+The first two start the API and web server themselves, reuse either if it is
+already listening, and seed the same comparison. `capture_demo.mjs` needs
+`ffmpeg` on `PATH`; set `PALIMPSEST_DEMO_FRAMES=<dir>` to keep the intermediate
+PNGs when a frame looks wrong. The social card's source is
+`scripts/social-preview.html`.
+
+Keep every committed asset under 1 MB. `scripts/public_release_audit.py` fails
+on any larger blob, and it is checking the whole of history, so an oversized
+image cannot simply be deleted afterwards.
+
 ## Commits and pull requests
 
 Use conventional-commit prefixes already used in the history:

@@ -1,0 +1,190 @@
+<!doctype html>
+<!--
+  Source for docs-site/_static/social-preview.png, rendered at 1280x640 by
+  scripts/capture_social_preview.mjs.
+
+  It is committed rather than exported once from a design tool because a social
+  card goes stale -- the tagline changes, the palette changes -- and
+  regenerating from markup is the difference between a five-second edit and
+  rebuilding it by hand.
+
+  Colours are the application's own tokens from frontend/app/globals.css, so
+  the card and the product look like the same thing.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      :root {
+        --paper: #faf8f4;
+        --vellum: #f2ece1;
+        --ink: #1b1a17;
+        --ink-muted: #6b665c;
+        --rule: #beb8ac;
+        --addition: #1c5c3a;
+        --addition-underlay: #cfdfd4;
+        --deletion: #8a2e22;
+        --deletion-underlay: #e5d2ce;
+        --moved: #2a4f7c;
+        --moved-underlay: #cfd8e3;
+        --manuscript: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+        --ui: ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif;
+      }
+
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+
+      body {
+        width: 1280px;
+        height: 640px;
+        background: var(--paper);
+        color: var(--ink);
+        font-family: var(--manuscript);
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        overflow: hidden;
+      }
+
+      .left {
+        padding: 74px 40px 64px 76px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+      }
+
+      h1 {
+        font-size: 82px;
+        font-weight: 600;
+        letter-spacing: -0.022em;
+        line-height: 1;
+      }
+
+      .rule {
+        width: 92px;
+        height: 3px;
+        background: var(--ink);
+        margin: 28px 0 26px;
+      }
+
+      .tagline {
+        font-size: 30px;
+        line-height: 1.38;
+        max-width: 20ch;
+      }
+
+      .sub {
+        margin-top: 26px;
+        font-family: var(--ui);
+        font-size: 17px;
+        letter-spacing: 0.01em;
+        color: var(--ink-muted);
+        line-height: 1.6;
+      }
+
+      /* A real comparison rather than a mock: the same Dickens witnesses the
+         documentation screenshots use, showing a move, a split, and one
+         changed word. */
+      .right {
+        background: var(--vellum);
+        border-left: 1px solid var(--rule);
+        padding: 74px 76px 64px 52px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 17px;
+      }
+
+      .row { display: flex; gap: 15px; align-items: baseline; }
+
+      .n {
+        font-family: var(--ui);
+        font-size: 14px;
+        color: var(--ink-muted);
+        min-width: 15px;
+        text-align: right;
+      }
+
+      .line { font-size: 22.5px; line-height: 1.52; }
+
+      .tag {
+        display: inline-block;
+        font-family: var(--ui);
+        font-size: 11.5px;
+        letter-spacing: 0.075em;
+        text-transform: uppercase;
+        padding: 3.5px 9px;
+        border-radius: 999px;
+        border: 1px solid currentColor;
+        vertical-align: 2.5px;
+        margin-left: 9px;
+        color: var(--moved);
+        background: var(--moved-underlay);
+      }
+
+      /* Change is carried by mark, underline, and a +/- glyph -- never by
+         colour alone. The same rule the interface follows. */
+      ins, del { text-decoration: none; padding: 1px 5px; border-radius: 3px; }
+      ins {
+        color: var(--addition);
+        background: var(--addition-underlay);
+        border-bottom: 2px solid var(--addition);
+      }
+      del {
+        color: var(--deletion);
+        background: var(--deletion-underlay);
+        border-bottom: 2px solid var(--deletion);
+        text-decoration: line-through;
+      }
+      .cue { font-family: var(--ui); font-size: 15px; font-weight: 600; }
+
+      footer {
+        position: absolute;
+        left: 76px;
+        bottom: 46px;
+        font-family: var(--ui);
+        font-size: 16px;
+        color: var(--ink-muted);
+        letter-spacing: 0.01em;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="left">
+      <h1>palimpsest</h1>
+      <div class="rule"></div>
+      <p class="tagline">Read the difference between two versions of a text.</p>
+      <p class="sub">
+        Word-level variants · moved, split and merged passages<br />
+        Synoptic &amp; unified reading · TEI&nbsp;P5 export
+      </p>
+      <footer>Open source · Apache-2.0</footer>
+    </div>
+
+    <div class="right">
+      <div class="row">
+        <span class="n">1</span>
+        <span class="line">
+          It was the best of times, it was the worst of times.
+          <span class="tag">moved to 2</span>
+        </span>
+      </div>
+      <div class="row">
+        <span class="n">2</span>
+        <span class="line">It was the age of wisdom, it was the age of foolishness.</span>
+      </div>
+      <div class="row">
+        <span class="n">3</span>
+        <span class="line">
+          We had everything before us.
+          <span class="tag">split</span>
+        </span>
+      </div>
+      <div class="row">
+        <span class="n">4</span>
+        <span class="line">
+          We had <span class="cue">−</span><del>nothing</del>
+          <span class="cue">+</span><ins>little</ins> before us.
+        </span>
+      </div>
+    </div>
+  </body>
+</html>

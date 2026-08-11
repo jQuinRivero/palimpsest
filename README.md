@@ -27,13 +27,17 @@ prose into a source-code patch. It aligns passages before comparing words, so a
 moved paragraph can remain a move, a paragraph split can remain a split, and
 only genuinely revised words are marked as insertions or deletions.
 
-![Synoptic comparison showing a moved passage, a split paragraph, and the visible change from “nothing” to “little”.](docs-site/_static/synoptic-view.png)
+![A comparison of two witnesses: uploading Manuscript A and Manuscript B, then reading the result — one passage reported as moved, one as split, and the single word “nothing” changed to “little” — first side by side, then as one stream.](docs-site/_static/demo.gif)
 
 In this example:
 
 - **nothing** becomes **little**;
 - passage 1 in Manuscript A moves to position 2 in Manuscript B;
 - passage 3 in Manuscript A becomes passages 3 and 4 in Manuscript B.
+
+Structural changes are reported separately, in words, and are deliberately kept
+out of the wording-change count: a passage that moved unchanged contributes no
+insertions and no deletions.
 
 ## Documentation
 

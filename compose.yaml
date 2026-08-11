@@ -1,0 +1,41 @@
+# Run palimpsest without installing a Python or Node toolchain:
+#
+#     docker compose up
+#
+# then open http://localhost:3000.
+#
+# Comparisons stay on this machine. Nothing is uploaded anywhere, and the
+# session cache lives in a local volume.
+
+services:
+  api:
+    build:
+      context: ./backend
+    image: palimpsest-api:local
+    ports:
+      - "127.0.0.1:8000:8000"
+    environment:
+      PALIMPSEST_DATABASE_PATH: /data/palimpsest.db
+    volumes:
+      - session-cache:/data
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ./frontend
+      args:
+        # The browser calls the API directly, so this is an address on the
+        # reader's machine rather than a name on this network.
+        NEXT_PUBLIC_API_URL: ${PALIMPSEST_API_URL:-http://127.0.0.1:8000}
+    image: palimpsest-web:local
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  # Comparisons expire on their own, but they should survive `docker compose
+  # restart` -- a shareable link that dies with the container is not shareable.
+  session-cache:

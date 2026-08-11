@@ -18,10 +18,15 @@ manual review.
       manuscripts, browser profile information, or internal host names.
 - [ ] Confirm every sample text is public domain or project-authored.
 - [ ] Review `NOTICE`, `THIRD-PARTY-NOTICES.md`, and ADR-0008.
-- [ ] Decide whether the CFS URLs in `backend/uv.lock` and `docs-site/uv.lock`
-      are acceptable in the public repository. They are required on the
-      managed development devices and are intentionally **not** rewritten to
-      public PyPI URLs. The current counts are 1,013 and 639 respectively.
+- [x] Confirm no lockfile resolves from a private index. `backend/uv.lock` and
+      `docs-site/uv.lock` now resolve from `https://pypi.org/simple`, and
+      `frontend/package-lock.json` from `registry.npmjs.org`. The **Lockfiles**
+      CI job and `scripts/check_lockfile_indexes.py` keep it that way; use the
+      **Relock** workflow to regenerate them.
+- [ ] Decide whether the private-index URLs that remain in *history* are
+      acceptable. They are proxy URLs for public packages rather than
+      credentials, and removing them means rewriting every commit. The audit
+      prints the current count.
 
 Run the repeatable history audit:
 
@@ -50,13 +55,13 @@ Changing visibility is intentionally not automated by this repository.
 
 - [ ] Change the repository from **Private** to **Public** in GitHub settings.
 - [ ] Verify the repository as a logged-out visitor.
-- [ ] Clone it into a machine/account without Microsoft feed configuration and
+- [ ] Clone it into a machine/account with no private-index configuration and
       run the documented setup. This is the only honest external-contributor
       smoke test.
 
 ## 4. Turn on public-repository protections
 
-- [ ] Add a `main` ruleset requiring pull requests and the five CI checks.
+- [ ] Add a `main` ruleset requiring pull requests and the seven CI checks.
 - [ ] Require branches to be up to date before merge.
 - [ ] Enable private vulnerability reporting.
 - [ ] Enable secret scanning and push protection.
@@ -82,7 +87,7 @@ python scripts/configure_public_repository.py --apply
 
 The first command is a dry run. While the repository is private it explains
 the GitHub-plan blocker and changes nothing. After visibility becomes public,
-`--apply` requires pull requests and the five CI checks, blocks force pushes
+`--apply` requires pull requests and the seven CI checks, blocks force pushes
 and branch deletion (including for administrators), requires up-to-date
 branches and resolved conversations, and enables vulnerability reporting,
 Dependabot security updates, secret scanning, and push protection.
@@ -93,10 +98,19 @@ maintainer can review changes.
 
 ## 5. Publish 0.1.0
 
+- [ ] Add your ORCID to `CITATION.cff` and to `.zenodo.json`, so the archived
+      record and every later citation resolve to you rather than to a name.
+- [ ] Enable the Zenodo–GitHub integration **before** tagging: Zenodo archives
+      on the release webhook, so enabling it afterwards does nothing for this
+      release. `.zenodo.json` supplies the record's metadata.
 - [ ] Replace `Unreleased` with the release date in `CHANGELOG.md`.
 - [ ] Confirm `0.1.0` in both package manifests.
 - [ ] Tag the reviewed commit `v0.1.0`.
 - [ ] Create a GitHub Release from the changelog entry.
+- [ ] Add the Zenodo **concept** DOI — the one that always resolves to the
+      latest version — to `CITATION.cff` as `doi:`, set `date-released:`, and
+      add a DOI badge to `README.md`.
+- [ ] Submit the Zenodo record to the `digital-humanities` community.
 - [ ] Verify the source archive contains `LICENSE`, `NOTICE`,
       `THIRD-PARTY-NOTICES.md`, `CITATION.cff`, governance files, and the
       documentation source.

@@ -1,0 +1,69 @@
+name: Relock
+
+# Regenerating a lockfile records whichever index resolved it. On a machine
+# behind a private package proxy that bakes an internal, externally unusable
+# host into a file everyone shares. Running the resolution here instead means
+# the committed locks always name canonical PyPI, whatever a contributor's
+# own machine is configured to use.
+on:
+  workflow_dispatch:
+    inputs:
+      upgrade:
+        description: "Upgrade dependencies to their latest compatible versions"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  relock:
+    name: Regenerate lockfiles
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      # No uv.toml or UV_INDEX is set here, so uv resolves against its default
+      # index, which is PyPI.
+      - name: Lock backend
+        working-directory: backend
+        run: uv lock ${{ inputs.upgrade && '--upgrade' || '' }}
+
+      - name: Lock documentation toolchain
+        working-directory: docs-site
+        run: uv lock ${{ inputs.upgrade && '--upgrade' || '' }}
+
+      # A lock that still names a private host would defeat the point of
+      # running this job at all, so fail rather than open the pull request.
+      - name: Verify locks name only canonical indexes
+        run: python scripts/check_lockfile_indexes.py
+
+      - name: Open a pull request
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: chore/relock
+          delete-branch: true
+          title: "build(deps): regenerate lockfiles"
+          commit-message: |
+            build(deps): regenerate lockfiles
+
+            Resolved on a runner with direct PyPI access so the committed
+            locks name canonical indexes rather than any contributor's
+            local proxy.
+          body: |
+            Regenerated `backend/uv.lock` and `docs-site/uv.lock` on a runner
+            with direct PyPI access.
+
+            Upgrade requested: `${{ inputs.upgrade }}`.
+
+            Review the version changes before merging. CI installs from these
+            locks with `uv sync --frozen`, so a green run means they resolve
+            and install cleanly from PyPI.

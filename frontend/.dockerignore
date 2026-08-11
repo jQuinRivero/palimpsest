@@ -1,0 +1,17 @@
+# node_modules is reinstalled from the lockfile inside the image; copying a
+# host copy in would drag platform-specific binaries across operating systems.
+node_modules/
+.next/
+out/
+build/
+
+# Test output and reports are not part of a runtime image.
+test-results/
+playwright-report/
+blob-report/
+.playwright/
+e2e/
+
+*.tsbuildinfo
+Dockerfile
+.dockerignore

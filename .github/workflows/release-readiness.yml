@@ -19,5 +19,8 @@ jobs:
       - name: Audit files, blobs, identities, and secret-shaped history
         run: python scripts/public_release_audit.py --require-clean
 
+      - name: Check lockfiles name only canonical indexes
+        run: python scripts/check_lockfile_indexes.py
+
       - name: Check links from the guide into the specification
         run: python docs-site/check_repository_links.py

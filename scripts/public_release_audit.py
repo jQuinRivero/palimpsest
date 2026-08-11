@@ -59,6 +59,11 @@ PERSONAL_PATHS = re.compile(
     r"(?i)(?:[A-Z]:\\Users\\[^\\\s]+|/Users/[^/\s]+|/home/[^/\s]+)"
 )
 COPILOT_TRAILER = re.compile(r"(?im)^(?:Co-authored-by:\s*Copilot|Copilot-Session:)")
+# Any package index that is not a public one. scripts/check_lockfile_indexes.py
+# performs the structural version of this check; this is the history-facing one.
+INTERNAL_INDEX = re.compile(
+    r"(?:[\w-]+\.pkgs\.visualstudio\.com|pkgs\.dev\.azure\.com|packagefeedproxy\.[\w.-]+)"
+)
 
 
 @dataclass(frozen=True)
@@ -181,6 +186,19 @@ def audit(*, require_clean: bool) -> list[Finding]:
         )
     )
 
+    # The working tree is clean of private indexes (checked below), but old
+    # commits still contain them and history becomes public too. These are not
+    # credentials -- they are proxy URLs for public packages -- so this is a
+    # judgement call, not a gate: purging them means rewriting every commit.
+    historical_index = len(INTERNAL_INDEX.findall(patch))
+    findings.append(
+        Finding(
+            "INFO",
+            f"private-index URLs remaining in history: {historical_index} "
+            "(not secrets; removing them requires rewriting history)",
+        )
+    )
+
     oversized = [
         (size, path) for size, path in largest_blobs() if size > MAX_BLOB_BYTES
     ]
@@ -214,11 +232,20 @@ def audit(*, require_clean: bool) -> list[Finding]:
     for lock in ("backend/uv.lock", "docs-site/uv.lock", "frontend/package-lock.json"):
         path = ROOT / lock
         internal = (
-            path.read_text(encoding="utf-8").count("pkgs.visualstudio.com")
+            len(INTERNAL_INDEX.findall(path.read_text(encoding="utf-8")))
             if path.is_file()
             else 0
         )
-        findings.append(Finding("INFO", f"{lock}: {internal} internal-feed URLs"))
+        # This used to be reported for a human to judge. It is a failure now:
+        # a lock naming a private index publishes internal infrastructure and
+        # only installs while that feed allows anonymous reads. Regenerate it
+        # with the Relock workflow rather than by hand.
+        findings.append(
+            Finding(
+                "FAIL" if internal else "PASS",
+                f"{lock}: {internal} private-index URLs",
+            )
+        )
 
     if require_clean:
         changes = git("status", "--porcelain").splitlines()

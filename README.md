@@ -91,22 +91,54 @@ insertion; splitting a stanza can disappear into line noise.
 OCR is an extension point, not a bundled service. Multi-witness collation,
 annotation, and editorial merging are also outside the current release.
 
+## How palimpsest compares
+
+Digital collation is a well-served field. `palimpsest` is not trying to replace
+its algorithms; it is trying to change what a collation *looks like* when a
+person sits down to read one.
+
+| | Focus | How `palimpsest` differs |
+|---|---|---|
+| [CollateX](https://collatex.net/) | The reference collation engine: n witnesses, variant graphs, alignment tables, a scriptable library | Takes two witnesses only, and spends the difference on reading. CollateX is the better tool for building an apparatus across many witnesses; this is the better tool for reading one revision closely |
+| [Juxta](https://www.juxtasoftware.org/) | Desktop and hosted collation with heat maps and a side-by-side view | Names structural change explicitly — this passage *moved*, this one *split* — rather than leaving it to be inferred from highlighting |
+| [Versioning Machine](https://v-machine.org/) | Displays a TEI parallel-segmentation edition you have already encoded | Produces that TEI from two ordinary documents instead of requiring it as input |
+| `diff`, Word "Compare", git | Line- or character-level comparison of files | Those treat prose as source code: rewrapping a paragraph reads as a rewrite, and a moved passage reads as a deletion plus an insertion |
+
+If you encode in TEI and need a formal apparatus criticus across many
+witnesses, use CollateX. If you have two drafts, two editions, or a manuscript
+and its printed text, and you want to *read* what changed between them, that is
+what this is for.
+
 ## Installation and quick start
 
-### Requirements
+### Run it (no toolchain required)
+
+With [Docker](https://docs.docker.com/get-docker/) installed:
+
+```bash
+git clone https://github.com/jQuinRivero/palimpsest.git
+cd palimpsest
+docker compose up
+```
+
+Open <http://localhost:3000>, add Manuscript A and Manuscript B, and select
+**Compare manuscripts**.
+
+Your manuscripts never leave your machine: `palimpsest` runs entirely on
+`localhost`, sends nothing to any external service, and keeps its session cache
+in a local volume. Stop it with `docker compose down`.
+
+### Develop from source
+
+For contributing, or to run without Docker.
+
+**Requirements**
 
 - [uv](https://docs.astral.sh/uv/)
 - Python 3.12 or newer
 - Node.js 20 or newer
 
-### 1. Clone the repository
-
-```bash
-git clone https://github.com/jQuinRivero/palimpsest.git
-cd palimpsest
-```
-
-### 2. Start the API
+**1. Start the API**
 
 ```bash
 cd backend
@@ -117,7 +149,7 @@ uv run --no-sync uvicorn app.main:app
 
 The API starts at <http://127.0.0.1:8000>.
 
-### 3. Start the web app
+**2. Start the web app**
 
 In a second terminal:
 
@@ -127,8 +159,12 @@ npm ci
 npm run dev
 ```
 
-Open <http://localhost:3000>, add Manuscript A and Manuscript B, and select
-**Compare manuscripts**.
+Open <http://localhost:3000>.
+
+> `npm ci` currently requires npm 11.6.x. Newer npm rejects the lockfile
+> because of an upstream defect in how it treats optional WebAssembly peers;
+> see [frontend/SECURITY-NOTES.md](frontend/SECURITY-NOTES.md). The Docker path
+> above is unaffected.
 
 For development setup and test commands, see
 [CONTRIBUTING.md](CONTRIBUTING.md).

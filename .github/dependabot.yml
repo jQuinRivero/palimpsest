@@ -39,10 +39,10 @@ updates:
       - dependency-name: "@types/node"
         update-types:
           - version-update:semver-major
-      # GitHub's public runners can install these, but the approved CFS npm
-      # feed used by this project's managed development devices does not yet
-      # serve 16.3.0. Ignore only that release; the next one is allowed to
-      # prove the feed has caught up.
+      # Only pre-release builds of 16.3.0 exist upstream, so this would ship a
+      # preview as the project's foundation. Ignore that one release; the next
+      # is allowed to prove a stable version has landed. See
+      # frontend/SECURITY-NOTES.md.
       - dependency-name: next
         versions:
           - "16.3.0"

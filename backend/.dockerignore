@@ -1,0 +1,22 @@
+# Keep the build context to what the image actually needs. Copying a local
+# .venv or __pycache__ into the build would both bloat the image and risk
+# shadowing the platform-correct dependencies installed inside it.
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+.coverage
+htmlcov/
+
+# Never copy a session cache into an image: it may hold unpublished text.
+*.db
+*.db-wal
+*.db-shm
+
+tests/
+scripts/
+Dockerfile
+.dockerignore

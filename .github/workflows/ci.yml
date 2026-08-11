@@ -23,6 +23,17 @@ env:
   NODE_VERSION: "24"
 
 jobs:
+  lockfiles:
+    name: Lockfiles
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # `uv sync --frozen` fetches the URLs a lock names verbatim, so an
+      # internal index committed here is not something a later step can undo.
+      - name: Check lockfiles name only canonical indexes
+        run: python scripts/check_lockfile_indexes.py
+
   backend:
     name: Backend (py${{ matrix.python-version }})
     runs-on: ubuntu-latest
@@ -205,3 +216,32 @@ jobs:
           name: playwright-report
           path: frontend/playwright-report/
           retention-days: 7
+
+  images:
+    name: Container images
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # `docker compose up` is the documented way to run palimpsest without a
+      # Python or Node toolchain, so it is the path most readers will take. An
+      # image that only builds on the maintainer's machine would break exactly
+      # the people the container exists for.
+      - name: Build images
+        run: docker compose build
+
+      # Building proves the images compile; this proves the API in one of them
+      # actually answers. The compose healthcheck is the same endpoint.
+      - name: Start the API and wait for it to report healthy
+        run: docker compose up --detach --wait api
+
+      - name: Check the API responds
+        run: curl -sf http://127.0.0.1:8000/api/v1/health
+
+      - name: Show logs on failure
+        if: failure()
+        run: docker compose logs
+
+      - name: Stop
+        if: always()
+        run: docker compose down --volumes

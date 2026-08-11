@@ -1,0 +1,35 @@
+{
+  "title": "palimpsest: Typography-first collation for literary texts",
+  "description": "<p>An open-source application for comparing two witnesses of a literary text. It aligns passages before comparing words, so a moved paragraph remains a move, a paragraph split remains a split, and only genuinely revised words are marked as insertions or deletions.</p><p>Features word-level collation, moved/split/merged passage detection, synoptic and unified reading modes, verse-aware line-by-line comparison of poetry, and TEI P5 export using parallel segmentation.</p>",
+  "upload_type": "software",
+  "license": "Apache-2.0",
+  "access_right": "open",
+  "creators": [
+    {
+      "name": "Rivero, Joaquín"
+    }
+  ],
+  "keywords": [
+    "collation",
+    "textual criticism",
+    "textual scholarship",
+    "digital humanities",
+    "scholarly editing",
+    "literary criticism",
+    "TEI",
+    "TEI P5",
+    "parallel segmentation",
+    "apparatus criticus",
+    "textual variants",
+    "manuscript comparison",
+    "genetic criticism",
+    "diff"
+  ],
+  "related_identifiers": [
+    {
+      "identifier": "https://github.com/jQuinRivero/palimpsest",
+      "relation": "isSupplementTo",
+      "scheme": "url"
+    }
+  ]
+}

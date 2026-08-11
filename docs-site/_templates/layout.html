@@ -1,0 +1,59 @@
+{%- extends "!layout.html" %}
+
+{#
+  A scholar looking for this tool searches for "collation", "witness", or
+  "textual variants" -- not for its name, which they do not know yet. Sphinx
+  emits a title and, given html_baseurl, a canonical link on its own;
+  everything a search engine or a shared link needs beyond that is added here.
+
+  This lives in a template rather than in _config.yml because Jupyter Book has
+  no supported key for arbitrary <head> content.
+#}
+{%- block extrahead %}
+  {{ super() }}
+  <meta name="description" content="palimpsest compares two witnesses of a literary text: word-level variants, moved, split and merged passages, synoptic and unified reading, and TEI P5 apparatus export. Free and open source.">
+  <meta name="keywords" content="collation, textual criticism, digital humanities, scholarly editing, textual variants, witness, apparatus criticus, TEI P5, parallel segmentation, manuscript comparison, genetic criticism, synoptic edition, variorum">
+  <meta name="author" content="Joaquín Rivero">
+
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="palimpsest">
+  <meta property="og:title" content="palimpsest — typography-first collation for literary texts">
+  <meta property="og:description" content="Compare two witnesses of a literary text. Word-level variants, moved, split and merged passages, and TEI P5 export.">
+  <meta property="og:image" content="https://jquinrivero.github.io/palimpsest/_static/synoptic-view.png">
+  <meta property="og:image:alt" content="Two witnesses of a text side by side, with a changed word and a moved passage marked.">
+  <meta property="og:url" content="https://jquinrivero.github.io/palimpsest/">
+
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="palimpsest — typography-first collation for literary texts">
+  <meta name="twitter:description" content="Compare two witnesses of a literary text. Word-level variants, moved, split and merged passages, and TEI P5 export.">
+  <meta name="twitter:image" content="https://jquinrivero.github.io/palimpsest/_static/synoptic-view.png">
+
+  {#- Machine-readable software metadata, so this is surfaced as software
+      rather than as an undifferentiated documentation page. #}
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "palimpsest",
+    "applicationCategory": "ReferenceApplication",
+    "operatingSystem": "Linux, macOS, Windows",
+    "softwareVersion": "0.1.0",
+    "license": "https://www.apache.org/licenses/LICENSE-2.0",
+    "isAccessibleForFree": true,
+    "url": "https://jquinrivero.github.io/palimpsest/",
+    "codeRepository": "https://github.com/jQuinRivero/palimpsest",
+    "downloadUrl": "https://github.com/jQuinRivero/palimpsest/releases",
+    "programmingLanguage": ["Python", "TypeScript"],
+    "author": {"@type": "Person", "name": "Joaquín Rivero"},
+    "description": "A typography-first collation reader for comparing two versions of a literary text, with word-level variants, moved, split and merged passage detection, verse-aware comparison, and TEI P5 parallel-segmentation export.",
+    "featureList": [
+      "Word-level collation of two textual witnesses",
+      "Moved, split, and merged passage detection",
+      "Synoptic and unified reading modes",
+      "Verse-aware line-by-line comparison",
+      "TEI P5 parallel-segmentation export",
+      "Accessible, non-colour-dependent change cues"
+    ]
+  }
+  </script>
+{%- endblock %}

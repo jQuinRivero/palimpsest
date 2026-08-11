@@ -245,3 +245,8 @@ next-env.d.ts
 *.db-shm
 /backend/palimpsest.db*
 docs-site/_build/
+
+# Local uv index configuration. A lockfile records whichever index resolved
+# it, so a contributor behind a proxy or private mirror configures it here and
+# it never reaches the lockfiles everyone else installs from. See CONTRIBUTING.
+uv.toml

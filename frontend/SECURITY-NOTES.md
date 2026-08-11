@@ -1,5 +1,39 @@
 # Dependency security notes
 
+## `npm ci` requires npm 11.6.x
+
+`package-lock.json` installs cleanly under npm **11.6.2** and is rejected by
+npm **11.8 and newer**:
+
+```
+npm error code EUSAGE
+npm error Missing: @emnapi/core@ from lock file
+npm error Missing: @emnapi/runtime@ from lock file
+npm error Missing: @napi-rs/wasm-runtime@ from lock file
+```
+
+Those three are optional peers of `@unrs/resolver-binding-wasm32-wasi`, a
+WebAssembly fallback that no supported platform installs. Under 11.6.2 npm
+reports the same conflict as an `ERESOLVE` **warning** and proceeds; from 11.8
+it treats it as a lockfile inconsistency and refuses.
+
+Regenerating with a newer npm does not resolve it. `npm install
+--package-lock-only` under 11.16 *removes* those entries — changing no package
+version, only pruning five optional records — after which `npm ci` under the
+same npm reports them as missing again. `npm install` and `npm ci` disagree
+with each other, so this is an npm defect rather than a stale lockfile.
+
+**Impact.** Anyone cloning with a current Node release cannot install the
+frontend. CI is unaffected only because `actions/setup-node` currently supplies
+npm 11.6.2 with Node 24.18.0 — when that moves, CI breaks with no change to
+this repository. `frontend/Dockerfile` therefore pins npm to 11.6.2 explicitly
+rather than inheriting whichever npm its base image was rebuilt with.
+
+**Action:** re-test on each npm release. The fix is upstream; when a version
+accepts the lockfile, drop the pin in `frontend/Dockerfile` and record the
+minimum here. Do not "fix" this by re-resolving the dependency graph — the
+overrides above are deliberate and no package version is actually wrong.
+
 ## `npm audit` residual: 5 high advisories
 
 `npm audit` reports 5 high-severity advisories in the frontend. All five are the

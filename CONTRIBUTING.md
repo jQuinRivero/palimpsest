@@ -1,6 +1,6 @@
 # Contributing to palimpsest
 
-Thank you for helping make `palimpsest` a better tool for close reading. This repository is personal, Apache-2.0-licensed open source by `@jQuinRivero`; it is not a Microsoft project.
+Thank you for helping make `palimpsest` a better tool for close reading. This repository is Apache-2.0-licensed open source maintained by `@jQuinRivero`.
 
 ## Start with the specification
 
@@ -42,11 +42,40 @@ npm run dev
 
 Backend commands that execute project code should go through `uv run`, so they use the locked environment rather than whatever Python happens to be on PATH.
 
-## The frontend lockfile
+## Lockfiles
 
-`frontend/package-lock.json` is generated on Linux so it contains optional packages that Linux CI needs. On Windows, `npm install` can silently rewrite the lockfile into a platform-local state that installs for you and fails in CI. Use `npm ci` for ordinary work.
+Both lockfiles must resolve from canonical public indexes: `backend/uv.lock`
+and `docs-site/uv.lock` from `https://pypi.org/simple`, and
+`frontend/package-lock.json` from `registry.npmjs.org`. CI enforces this in the
+**Lockfiles** job via `scripts/check_lockfile_indexes.py`.
 
-When the lockfile really must be regenerated, do it deliberately from `frontend`. On macOS or Linux:
+This matters more than it looks. A lockfile records whichever index resolved
+it, so regenerating one behind a corporate proxy, mirror, or private registry
+bakes that host into a file everyone installs from. `uv sync --frozen` fetches
+the URLs a lock names *verbatim* and ignores index configuration, so a lock
+pointing at a private host cannot be corrected at install time — it simply
+fails for everyone who cannot reach it.
+
+### Regenerating `backend/uv.lock` or `docs-site/uv.lock`
+
+Do not run `uv lock` locally and commit the result unless you know your machine
+resolves directly from PyPI. Instead run the **Relock** workflow
+(`.github/workflows/relock.yml`) from the Actions tab. It resolves on a runner
+with direct PyPI access, verifies the output, and opens a pull request. Use its
+`upgrade` input to move dependencies rather than merely re-pinning them.
+
+Never hand-edit resolved URLs. Canonical PyPI paths are content-addressed, so a
+correct URL cannot be constructed by search and replace.
+
+### Regenerating `frontend/package-lock.json`
+
+`frontend/package-lock.json` is generated on Linux so it contains the optional
+packages Linux CI needs. On Windows, `npm install` can silently rewrite it into
+a platform-local state that installs for you and fails in CI. Use `npm ci` for
+ordinary work.
+
+When it really must be regenerated, do it deliberately from `frontend`. On
+macOS or Linux:
 
 ```bash
 docker run --rm -v "$PWD:/w" -w /w node:24 npm install --package-lock-only
@@ -58,24 +87,25 @@ On PowerShell:
 docker run --rm -v "${PWD}:/w" -w /w node:24 npm install --package-lock-only
 ```
 
-Before committing the regenerated lockfile, rewrite any `redacted.invalid` resolved hosts back to `registry.npmjs.org`. This does **not** route installs around the approved feed: npm's `replace-registry-host` default substitutes whatever registry is configured — the Central Feed Services proxy on a managed device — for the canonical host at install time, so packages still come through the protected feed. What it avoids is pinning one machine's mirror assignment into a lockfile everyone shares, which is both unusable elsewhere and churns hundreds of lines whenever a different mirror answers.
+Before committing, confirm every `resolved` host is `registry.npmjs.org`.
 
-This is the opposite of the rule for `backend/uv.lock` below, because uv has no equivalent substitution.
+### Working behind a private index
 
-## The backend lockfile
+If your machine can only reach PyPI through a proxy, configure that locally
+rather than in anything committed. uv reads a `uv.toml` from the project
+directory, which is gitignored here for exactly this purpose:
 
-`backend/uv.lock` records the index each package was resolved from. On a Microsoft-managed device that is the approved Central Feed Services proxy, not public PyPI — direct access to `pypi.org/simple` and `files.pythonhosted.org` is blocked by policy, and routing installs through the protected feed is the point rather than an obstacle to route around.
-
-So regenerate it through the approved feed, never by finding a machine with direct PyPI access:
-
-```bash
-cd backend
-uv lock --upgrade-package <name>   # or `uv lock` after editing pyproject.toml
+```toml
+# uv.toml — local only, never committed
+[[index]]
+url = "https://your-proxy.example/pypi/simple"
+default = true
 ```
 
-with the index configured to `https://redacted.invalid/pypi/simple`, which is what a correctly configured device already has. Do not hand-edit resolved URLs in `uv.lock`, and do not strip the feed hosts out of it: unlike npm, uv fetches the URLs the lock names rather than substituting a configured index, so a lock rewritten to canonical PyPI URLs would fail to install on the very devices this project is developed on.
-
-One consequence worth knowing: which mirror answers is assigned per request, so re-resolving churns a large number of URLs that have nothing to do with any dependency changing. If `git diff backend/uv.lock` is enormous and no version moved, you did not mean to regenerate it.
+Project-level `uv.toml` takes precedence over `pyproject.toml`, and
+`UV_DEFAULT_INDEX` overrides both. Use plain `uv sync` rather than
+`uv sync --frozen` in that setup, since `--frozen` bypasses index configuration
+entirely.
 
 ## Tests and checks
 

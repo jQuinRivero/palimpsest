@@ -17,11 +17,13 @@ from typing import Any
 REPOSITORY = "jQuinRivero/palimpsest"
 MAIN_BRANCH = "main"
 REQUIRED_CHECKS = (
+    "Lockfiles",
     "Backend (py3.12)",
     "Backend (py3.13)",
     "Frontend",
     "Schema contract",
     "End-to-end",
+    "Container images",
 )
 
 

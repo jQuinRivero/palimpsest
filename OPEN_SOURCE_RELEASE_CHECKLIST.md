@@ -98,7 +98,8 @@ maintainer can review changes.
 - [ ] Tag the reviewed commit `v0.1.0`.
 - [ ] Create a GitHub Release from the changelog entry.
 - [ ] Verify the source archive contains `LICENSE`, `NOTICE`,
-      `THIRD-PARTY-NOTICES.md`, governance files, and the documentation source.
+      `THIRD-PARTY-NOTICES.md`, `CITATION.cff`, governance files, and the
+      documentation source.
 
 Publishing to PyPI, npm, or a container registry is a separate decision and is
 not required for the source release.

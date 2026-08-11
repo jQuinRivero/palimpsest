@@ -26,6 +26,7 @@ REQUIRED_FILES = (
     "CODE_OF_CONDUCT.md",
     "SECURITY.md",
     "THIRD-PARTY-NOTICES.md",
+    "CITATION.cff",
     ".github/CODEOWNERS",
 )
 

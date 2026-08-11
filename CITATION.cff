@@ -1,0 +1,23 @@
+cff-version: 1.2.0
+message: >-
+  If you use palimpsest in scholarly work, please cite the software using the
+  metadata in this file.
+title: "palimpsest: Typography-first collation for literary texts"
+type: software
+authors:
+  - family-names: Rivero
+    given-names: Joaquín
+version: 0.1.0
+license: Apache-2.0
+repository-code: "https://github.com/jQuinRivero/palimpsest"
+url: "https://github.com/jQuinRivero/palimpsest"
+abstract: >-
+  An open-source application for comparing two witnesses of a literary text
+  with word-level revision, moved/split/merged passage detection, synoptic and
+  unified reading, and TEI P5 export.
+keywords:
+  - collation
+  - digital humanities
+  - literary criticism
+  - textual criticism
+  - TEI

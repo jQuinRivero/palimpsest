@@ -444,7 +444,9 @@ None. Every displayed value is derived directly from `DiffMetrics`.
 
 ### Behaviour
 
-The bar renders rounded `DiffMetrics.similarity`, wording changes as insertion/deletion word counts (or "No wording changes"), structural counts, and the A-to-B word-count transition. Counts use locale-aware grouping.
+The bar renders `DiffMetrics.similarity` as a percentage, wording changes as insertion/deletion word counts (or "No wording changes"), structural counts, and the A-to-B word-count transition. Counts use locale-aware grouping.
+
+The percentage is **rounded only when `edit_count` is zero**, and otherwise floored and capped at 99%. Rounding throughout would report a long witness with hundreds of revisions as `100% similar`: a 136,000-word novel with 883 changed words scores `0.9967`. Short witnesses cannot expose this, because a single edit moves their score by whole points, so the failure appears only on the long manuscripts this tool exists for. `100% similar` is therefore reserved for a comparison with no wording changes at all.
 
 `insertions`, `deletions`, `edit_count`, and `unchanged_tokens` are word counts supplied by `DiffMetrics`, never counts derived from `Token[]` length. The bar must not derive textual metrics from rendered tokens.
 
@@ -459,6 +461,7 @@ Metrics are grouped in a region labelled "Comparison summary". Wording and struc
 | All wording unchanged | Show "No wording changes"; retain any structural counts. |
 | No structural findings | Omit the structural-count phrase. |
 | No shared wording | Show `0% similar` and the insertion/deletion word counts. |
+| Nearly identical, but edited | Show at most `99% similar`, never `100%`, while `edit_count` is non-zero. |
 
 ### Design tokens consumed
 

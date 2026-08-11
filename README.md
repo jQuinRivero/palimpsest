@@ -18,6 +18,7 @@
 [![Docs](https://github.com/jQuinRivero/palimpsest/actions/workflows/docs.yml/badge.svg)](https://github.com/jQuinRivero/palimpsest/actions/workflows/docs.yml)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-3776AB)](backend/pyproject.toml)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21893117.svg)](https://doi.org/10.5281/zenodo.21893117)
 
 **A typography-first collation reader for comparing two versions of a literary
 text.**
@@ -193,8 +194,8 @@ payload and does not reimplement the collation algorithm.
 
 ## Project status
 
-`palimpsest` is preparing its first `0.1.0` source release. The current scope
-is intentionally focused:
+`palimpsest` `0.1.0` is its first source release. The current scope is
+intentionally focused:
 
 - two witnesses per comparison;
 - local or trusted deployment;
@@ -219,9 +220,15 @@ instructions in [SECURITY.md](SECURITY.md).
 
 ## Citation
 
-If `palimpsest` contributes to scholarly work, please cite the software. GitHub
-can generate a formatted citation from [CITATION.cff](CITATION.cff). Release
-notes and version history are in [CHANGELOG.md](CHANGELOG.md).
+If `palimpsest` contributes to scholarly work, please cite the software. Each
+release is archived on Zenodo with a DOI:
+
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21893117.svg)](https://doi.org/10.5281/zenodo.21893117)
+
+That DOI always resolves to the most recent version; the Zenodo record for a
+specific release carries its own. GitHub can generate a formatted citation from
+[CITATION.cff](CITATION.cff). Release notes and version history are in
+[CHANGELOG.md](CHANGELOG.md).
 
 ## License
 

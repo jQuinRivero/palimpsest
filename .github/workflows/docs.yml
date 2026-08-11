@@ -39,6 +39,19 @@ jobs:
       - name: Build HTML
         run: uv --directory docs-site run jupyter-book build .
 
+      # A missing sitemap does not fail a Sphinx build, it just quietly stops
+      # existing — and nothing else here would notice that search engines had
+      # lost the page index.
+      - name: Check the sitemap was generated
+        run: |
+          sitemap=docs-site/_build/html/sitemap.xml
+          test -s "$sitemap" || { echo "::error::$sitemap missing or empty"; exit 1; }
+          count=$(grep -c "<loc>" "$sitemap")
+          echo "sitemap lists $count URLs"
+          test "$count" -ge 10 || { echo "::error::only $count URLs"; exit 1; }
+          grep -q "https://jquinrivero.github.io/palimpsest/" "$sitemap" \
+            || { echo "::error::sitemap URLs are not absolute"; exit 1; }
+
       - name: Check links into the normative specification
         run: uv --directory docs-site run python check_repository_links.py
 

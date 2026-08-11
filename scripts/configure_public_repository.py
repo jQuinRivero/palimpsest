@@ -79,6 +79,7 @@ def protection_payload(required_approvals: int) -> dict[str, Any]:
 def apply(required_approvals: int) -> None:
     endpoint = f"repos/{REPOSITORY}/branches/{MAIN_BRANCH}/protection"
     gh(
+        "api",
         "--method",
         "PUT",
         endpoint,
@@ -88,9 +89,9 @@ def apply(required_approvals: int) -> None:
     )
 
     # Public repositories get these features without GitHub Advanced Security.
-    gh("--method", "PUT", f"repos/{REPOSITORY}/private-vulnerability-reporting")
-    gh("--method", "PUT", f"repos/{REPOSITORY}/vulnerability-alerts")
-    gh("--method", "PUT", f"repos/{REPOSITORY}/automated-security-fixes")
+    gh("api", "--method", "PUT", f"repos/{REPOSITORY}/private-vulnerability-reporting")
+    gh("api", "--method", "PUT", f"repos/{REPOSITORY}/vulnerability-alerts")
+    gh("api", "--method", "PUT", f"repos/{REPOSITORY}/automated-security-fixes")
     gh(
         "repo",
         "edit",

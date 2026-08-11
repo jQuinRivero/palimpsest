@@ -8,9 +8,10 @@ authors:
   - family-names: Rivero
     given-names: Joaquín
 version: 0.1.0
+date-released: 2026-08-11
 license: Apache-2.0
 repository-code: "https://github.com/jQuinRivero/palimpsest"
-url: "https://github.com/jQuinRivero/palimpsest"
+url: "https://jquinrivero.github.io/palimpsest/"
 abstract: >-
   An open-source application for comparing two witnesses of a literary text
   with word-level revision, moved/split/merged passage detection, synoptic and

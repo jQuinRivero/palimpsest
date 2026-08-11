@@ -193,8 +193,8 @@ payload and does not reimplement the collation algorithm.
 
 ## Project status
 
-`palimpsest` is preparing its first `0.1.0` source release. The current scope
-is intentionally focused:
+`palimpsest` `0.1.0` is its first source release. The current scope is
+intentionally focused:
 
 - two witnesses per comparison;
 - local or trusted deployment;

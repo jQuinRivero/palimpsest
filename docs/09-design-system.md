@@ -119,9 +119,9 @@ Token-level cues and block-level cues use different channels. `INSERTION` and `D
 | `MODIFIED` | Gutter marker indicating changed tokens; inline tokens carry `INSERTION` and `DELETION` treatments. |
 | `INSERTED` | Block exists only in Manuscript B. The Manuscript B pane shows inserted content; the Manuscript A side reserves an alignment gap only when needed for synoptic reading. |
 | `DELETED` | Block exists only in Manuscript A. The Manuscript A pane shows deleted content using the through-text treatment; Manuscript B reserves an alignment gap only when needed. |
-| `MOVED` | Visible `Moved` sentence naming the A and B passage positions, plus gutter marker and `BlockConnector` using `--color-moved`; optional endpoint underlay uses `--color-moved-underlay`. Text itself is not recoloured as moved. |
-| `SPLIT` | Visible `Split` sentence naming the one A passage and its B passages, plus grouped connector. Members share `group_id`; token tint never communicates the relationship. |
-| `MERGED` | Visible `Merged` sentence naming the A passages and their one B passage, plus grouped connector. Members share `group_id`; token tint never communicates the relationship. |
+| `MOVED` | Visible `Moved` sentence naming the A and B passage positions, plus gutter marker and a `BlockConnector` labelled `Moved up/down · A n → B n`. Optional endpoint underlay uses `--color-moved-underlay`; text itself is not recoloured as moved. |
+| `SPLIT` | Visible `Split` sentence naming the one A passage and its B passages, plus connectors labelled `Split · A n → B n` for each member. Members share `group_id`; token tint never communicates the relationship. |
+| `MERGED` | Visible `Merged` sentence naming the A passages and their one B passage, plus connectors labelled `Merged · A n → B n`. Members share `group_id`; token tint never communicates the relationship. |
 
 `ARTIFACT` is a `BlockKind`, not a `BlockStatus`. `BlockKind.ARTIFACT` blocks are de-emphasised and collapsible. They use muted ink, smaller UI labeling, and no default participation in the main change rhythm because running heads, folio numbers, and footers are extracted but excluded from diff by default.
 

@@ -98,6 +98,12 @@ test("a moved passage reads as moved, not as a deletion and an insertion", async
   // The distance is the whole information content of a move marker: "moved"
   // alone does not tell a reader where the passage went.
   await expect(marker).toHaveAttribute("title", /^moved \d+ blocks? (earlier|later)$/);
+  await expect(page.getByTestId("connector-status-MOVED").first()).toContainText(
+    /Moved (up|down)/,
+  );
+  await expect(page.getByTestId("connector-positions-MOVED").first()).toContainText(
+    /A \d+ → B \d+/,
+  );
 
   // The whole point: a move changes no words, so the summary must not claim
   // any were inserted or deleted.
@@ -122,6 +128,10 @@ test("a paragraph split reads as a split group with no wording change", async ({
   // paragraphs came from one.
   await expect(page.locator('[data-testid^="block-connector-"]').first()).toBeVisible();
   await expect(page.getByTestId("gutter-marker-SPLIT").first()).toHaveText(GLYPH.SPLIT);
+  await expect(page.getByTestId("connector-status-SPLIT").first()).toHaveText("Split");
+  await expect(page.getByTestId("connector-positions-SPLIT").first()).toContainText(
+    /A \d+ → B \d+/,
+  );
   await expect(page.getByTestId("structural-relationship-SPLIT")).toContainText(
     /passage \d+ in Manuscript A became passages \d+ and \d+ in Manuscript B/i,
   );
@@ -145,6 +155,10 @@ test("a merged pair reads as a merge group with no wording change", async ({
 
   await expect(page.getByTestId("gutter-marker-MERGED").first()).toHaveText(GLYPH.MERGED);
   await expect(page.locator('[data-testid^="block-connector-"]').first()).toBeVisible();
+  await expect(page.getByTestId("connector-status-MERGED").first()).toHaveText("Merged");
+  await expect(page.getByTestId("connector-positions-MERGED").first()).toContainText(
+    /A \d+ → B \d+/,
+  );
   await expect(page.getByTestId("structural-relationship-MERGED")).toContainText(
     /passages \d+ and \d+ in Manuscript A became passage \d+ in Manuscript B/i,
   );

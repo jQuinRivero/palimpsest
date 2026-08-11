@@ -485,7 +485,11 @@ window would be a plausible lie.
 The structural-marker toggle hides this summary together with the gutter and
 connector affordances. Each sentence carries a visible text badge (`Moved`,
 `Split`, or `Merged`), so the explanation does not depend on colour or a
-special glyph.
+special glyph. In synoptic view, each connector repeats the relationship at
+the point of reading: `Moved down · A 1 → B 2`, `Split · A 3 → B 4`, or the
+corresponding merge. The explicit ordinals are required because aligning the
+same prose on one visual row otherwise conceals the movement it is meant to
+show.
 
 ## DiffBlockRow
 

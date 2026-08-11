@@ -60,7 +60,7 @@ export const VirtualizedSynopticView = forwardRef<
 
   const row = (index: number, block: DiffBlock) => (
     <div
-      className="grid grid-cols-1 gap-x-4 md:grid-cols-[minmax(0,1fr)_2rem_minmax(0,1fr)]"
+      className="grid grid-cols-1 gap-x-4 md:grid-cols-[minmax(0,1fr)_7rem_minmax(0,1fr)]"
       data-block-index={index}
     >
       <DiffBlockRow block={block} side="a" showStructuralMarkers={showStructuralMarkers} />
@@ -75,7 +75,7 @@ export const VirtualizedSynopticView = forwardRef<
           exposed to assistive technology, not treated as decorative column
           labels. They sit outside the scroller so they stay visible while the
           virtualized rows move beneath them. */}
-      <div className="grid grid-cols-1 gap-x-4 md:grid-cols-[minmax(0,1fr)_2rem_minmax(0,1fr)]">
+      <div className="grid grid-cols-1 gap-x-4 md:grid-cols-[minmax(0,1fr)_7rem_minmax(0,1fr)]">
         <PaneHeading>Manuscript A</PaneHeading>
         <div aria-hidden="true" className="hidden md:block" />
         <PaneHeading>Manuscript B</PaneHeading>

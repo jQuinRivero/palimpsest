@@ -15,6 +15,7 @@ import { useBlockNavigation } from "@/lib/hooks/useBlockNavigation";
 import { useWindowedBlocks } from "@/lib/hooks/useWindowedBlocks";
 import { usePrintAll } from "@/lib/hooks/usePrintAll";
 import { LoadingProgress } from "./LoadingProgress";
+import { SourceOrderOverview } from "./SourceOrderOverview";
 import { StructuralSummary } from "./StructuralSummary";
 
 function ViewModeToggle({
@@ -216,6 +217,12 @@ export function DiffViewer({
       />
 
       <StructuralSummary
+        blocks={blocks}
+        visible={movesEnabled}
+        complete={windowed.isComplete}
+      />
+
+      <SourceOrderOverview
         blocks={blocks}
         visible={movesEnabled}
         complete={windowed.isComplete}

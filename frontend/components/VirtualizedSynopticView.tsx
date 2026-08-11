@@ -71,6 +71,13 @@ export const VirtualizedSynopticView = forwardRef<
 
   return (
     <div data-testid="synoptic-view" className="mt-6">
+      <div className="mb-4">
+        <h2 className="font-ui text-sm font-semibold text-ink">Aligned reading</h2>
+        <p className="mt-1 font-ui text-xs leading-5 text-ink-muted">
+          Matching passages share a row here. Use Original manuscript order
+          above to see where they occurred in each source.
+        </p>
+      </div>
       {/* The pane headings are the reader's primary orientation and must be
           exposed to assistive technology, not treated as decorative column
           labels. They sit outside the scroller so they stay visible while the

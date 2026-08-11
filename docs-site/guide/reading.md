@@ -32,6 +32,11 @@ in Manuscript B" and "Passage 3 in Manuscript A became passages 3 and 4 in
 Manuscript B." The symbols in the gutters then help trace those named passages;
 they are not the only explanation.
 
+The **Original manuscript order** panel preserves each source before alignment.
+This matters because the detailed synoptic reading deliberately places
+corresponding passages on the same row. Without the order panel, that alignment
+would make a moved passage look stationary.
+
 Verse is segmented as one `VERSE_LINE` block per line, so a transposed line can be reported as `MOVED`. Stanza boundaries are carried separately so a stanza redivision is also visible.
 
 ## Navigation and deep links

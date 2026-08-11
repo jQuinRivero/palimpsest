@@ -16,7 +16,7 @@ Here is what that buys in one example: one passage moved, one paragraph split
 in two, and one word changed from *nothing* to *little*:
 
 ```{image} ../_static/synoptic-view.png
-:alt: Synoptic view. The summary bar reads "97% similar", "+1 word", "−1 word", "1 block moved, 2 blocks split". Manuscript A and Manuscript B are side by side. "Nothing" has a visible minus sign and strike in A; "little" has a visible plus sign and underline in B. The center labels read "Moved down, A 1 to B 2", "Split, A 3 to B 3", and "Split, A 3 to B 4".
+:alt: Synoptic view. An Original manuscript order panel shows A in the sequence "best", "age", then one combined "everything/nothing" paragraph; B shows "age", "best", "everything", then "little". The aligned reading below labels the move from A 1 to B 2 and the split from A 3 to B 3 and B 4; "nothing" has a minus sign and strike while "little" has a plus sign and underline.
 :width: 100%
 ```
 

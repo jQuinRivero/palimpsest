@@ -186,13 +186,17 @@ try {
   processes.push(await startWeb());
 
   const browser = await chromium.launch({ channel: process.env.PALIMPSEST_DOCS_BROWSER ?? "msedge", headless: true });
-  const page = await browser.newPage({ viewport: { width: 1280, height: 720 }, deviceScaleFactor: 1 });
+  const page = await browser.newPage({
+    viewport: { width: 1280, height: 720 },
+    deviceScaleFactor: 1,
+  });
 
   await page.goto(webBase, { waitUntil: "networkidle" });
   await page.getByTestId("accepted-formats").waitFor({ state: "visible" });
   await capture(page, "uploader.png");
 
   const comparisonId = await createComparison();
+  await page.setViewportSize({ width: 1280, height: 1150 });
   await page.goto(`${webBase}/c/${comparisonId}?view=synoptic`, { waitUntil: "networkidle" });
   await page.getByTestId("diff-viewer").waitFor({ state: "visible" });
   await page.waitForFunction(() => document.querySelector('[data-testid="diff-viewer"]')?.getAttribute("data-hydrated") === "true");

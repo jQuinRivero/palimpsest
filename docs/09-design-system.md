@@ -19,6 +19,7 @@ The design target is a book page, not a code review. A researcher may read this 
 | Line-oriented gutters | Prose reflows with viewport width, zoom, font loading, and writing system. Visual lines are not stable anchors. | The change gutter shows block ordinals. These are block indices, not visual line numbers. |
 | Character-level highlights inside justified prose | Dense inline highlights create visual noise and make the prose harder to read than the change itself. | Diff at token level by default, with understated underlays and non-colour redundant signals. |
 | Pixel-linked split panes | Manuscript A and Manuscript B have different amounts of text, so pixel or percentage locks drift immediately. | Synchronize by aligned block anchors and display connectors for `MOVED`, `SPLIT`, and `MERGED` blocks. |
+| Alignment hides original order | Putting corresponding passages on one row necessarily rearranges at least one witness, so a move can look stationary and a split can look pre-split. | Show each witness's original passage sequence before the aligned reading, with source and destination labels on structural items. |
 
 ## Typography
 

@@ -18,6 +18,7 @@ The client does not compute a diff. It uploads two witnesses, asks the backend f
 └─ DiffViewer
    ├─ DiffSummaryBar
    ├─ StructuralSummary                explicit moved/split/merged sentences
+   ├─ SourceOrderOverview              each witness in its original sequence
    ├─ ViewModeToggle
    ├─ ChangeNavigator
    ├─ LoadingProgress                  while a windowed comparison loads
@@ -41,12 +42,12 @@ The gutter shows block ordinals from `a_index` and `b_index`. These are not rend
 
 | Convention | Requirement |
 |---|---|
-| Client boundary | `ManuscriptUploader`, `DiffViewer`, `VirtualizedSynopticView`, `VirtualizedUnifiedView`, `DiffSummaryBar`, `StructuralSummary`, `DiffBlockRow`, `TokenSpan`, `ChangeGutter`, `ChangeNavigator`, `LoadingProgress`, `ComparisonPending`, `ViewModeToggle`, `BlockConnector`, and `EmptyState` render inside client boundaries because they consume browser state or the interactive comparison payload. |
+| Client boundary | `ManuscriptUploader`, `DiffViewer`, `VirtualizedSynopticView`, `VirtualizedUnifiedView`, `DiffSummaryBar`, `StructuralSummary`, `SourceOrderOverview`, `DiffBlockRow`, `TokenSpan`, `ChangeGutter`, `ChangeNavigator`, `LoadingProgress`, `ComparisonPending`, `ViewModeToggle`, `BlockConnector`, and `EmptyState` render inside client boundaries because they consume browser state or the interactive comparison payload. |
 | Naming | Public props use `comparisonId`, `comparison`, `blocks`, `metrics`, `options`, `a`, `b`, `a_index`, and `b_index` only where those names mirror the contract. UI text always says Manuscript A and Manuscript B, never positional pane labels. |
 | Memoization | `TokenSpan` is memoized by `text`, `status`, and announcement mode. `DiffBlockRow` is memoized by `DiffBlock.id`, pane, expansion state, and focus state. Handlers passed into virtualized rows are stable callbacks. |
 | DOM discipline | A 100,000-word manuscript can produce about 120,000 word tokens per witness before payload run-coalescing. A payload `Token` is a contiguous run, not necessarily one word. Rows render only the current virtual window and must never compute metrics by counting `Token` array entries. |
 | URL state | `?view=synoptic` maps to `ViewMode.SYNOPTIC`; `?view=unified` maps to `ViewMode.UNIFIED`. `?block=<index>` uses the block ordinal, not a DOM row number. `?moves=on|off` controls whether move connectors are shown; it does not mutate `DiffOptions.detect_moves`, which only records how the backend computed the payload. |
-| Testability hooks | Components expose stable `data-testid` values for the component root and block ids: `manuscript-uploader`, `diff-viewer`, `synoptic-view`, `diff-summary-bar`, `structural-summary`, `structural-relationship-{status}`, `block-loading-status`, `diff-block-row-{id}`, and `token-{status}`. Hooks must not encode visual position. |
+| Testability hooks | Components expose stable `data-testid` values for the component root and block ids: `manuscript-uploader`, `diff-viewer`, `synoptic-view`, `diff-summary-bar`, `structural-summary`, `source-order-overview`, `source-order-a-{index}`, `source-order-b-{index}`, `block-loading-status`, `diff-block-row-{id}`, and `token-{status}`. Hooks must not encode rendered pixel position. |
 
 ## ManuscriptUploader
 
@@ -490,6 +491,24 @@ the point of reading: `Moved down · A 1 → B 2`, `Split · A 3 → B 4`, or th
 corresponding merge. The explicit ordinals are required because aligning the
 same prose on one visual row otherwise conceals the movement it is meant to
 show.
+
+## SourceOrderOverview
+
+`SourceOrderOverview` preserves the source sequence that the detailed synoptic
+reading necessarily rearranges. It reconstructs each original passage from
+the side-specific token streams, groups split or merged chunks by their
+original index, sorts by `a_index` or `b_index`, and displays both witness
+orders before aligned reading begins.
+
+For the worked example, Manuscript A visibly reads `best → age → combined`
+while Manuscript B reads `age → best → first half → second half`. Structural
+items carry compact labels such as `Moved to B 2` and `Split into B 3, 4`.
+
+When a witness has at most twelve passages, the whole source order is shown.
+For larger manuscripts, only structurally changed passages are listed; the
+detailed virtualized reading remains the place to read the complete text.
+Like `StructuralSummary`, the component waits for all blocks to load and is
+hidden by the structural-marker toggle.
 
 ## DiffBlockRow
 

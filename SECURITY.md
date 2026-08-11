@@ -6,7 +6,7 @@
 | --- | --- |
 | 0.1.x | Yes |
 
-Nothing has been released yet; this policy applies to the current `0.1.x` line while the repository is prepared for public release.
+Nothing older than `0.1.0` exists; this policy applies to the current `0.1.x` line.
 
 ## Reporting a vulnerability
 

@@ -1,7 +1,19 @@
 import type { DiffMetrics } from "@/lib/types";
 
-function percent(value: number): string {
-  return `${Math.round(value * 100)}%`;
+/**
+ * Percentage for display.
+ *
+ * Rounding is not safe at the top of the range. A 136,000-word novel with 883
+ * changed words scores 0.9967, which rounds to "100% similar" — telling a
+ * reader that a manuscript with hundreds of revisions is untouched. Short
+ * witnesses never expose this, because one edit moves their score by whole
+ * points, so it only appears on exactly the long texts this tool is for.
+ *
+ * Only a comparison with no wording changes at all may claim 100%.
+ */
+function percent(value: number, unchanged: boolean): string {
+  const scaled = unchanged ? Math.round(value * 100) : Math.min(99, Math.floor(value * 100));
+  return `${scaled}%`;
 }
 
 function plural(count: number, noun: string): string {
@@ -31,7 +43,7 @@ export function DiffSummaryBar({ metrics }: { metrics: DiffMetrics }) {
       aria-label="Comparison summary"
     >
       <span className="text-ink">
-        <span className="font-mono tabular-nums">{percent(metrics.similarity)}</span>{" "}
+        <span className="font-mono tabular-nums">{percent(metrics.similarity, unchanged)}</span>{" "}
         similar
       </span>
 

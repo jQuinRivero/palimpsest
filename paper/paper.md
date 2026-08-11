@@ -10,7 +10,6 @@ tags:
   - Python
 authors:
   - name: Joaquín Rivero
-    orcid: 0000-0000-0000-0000
     affiliation: 1
 affiliations:
   - name: Independent researcher

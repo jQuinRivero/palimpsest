@@ -98,8 +98,6 @@ maintainer can review changes.
 
 ## 5. Publish 0.1.0
 
-- [ ] Add your ORCID to `CITATION.cff` and to `.zenodo.json`, so the archived
-      record and every later citation resolve to you rather than to a name.
 - [ ] Enable the Zenodo–GitHub integration **before** tagging: Zenodo archives
       on the release webhook, so enabling it afterwards does nothing for this
       release. `.zenodo.json` supplies the record's metadata.
